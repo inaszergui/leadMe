@@ -1,1 +1,791 @@
+```html
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeadMe | حلق نحو أهدافك</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        sky: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);
+            background-attachment: fixed;
+        }
+        /* تأثيرات حركة لطيفة مثل الغيوم */
+        .cloud-card {
+            backdrop-filter: blur(8px);
+            background-color: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.1), 0 8px 10px -6px rgba(14, 165, 233, 0.05);
+            transition: all 0.3s ease;
+        }
+        .cloud-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(14, 165, 233, 0.15), 0 10px 10px -5px rgba(14, 165, 233, 0.1);
+        }
+        /* انيميشن الغيوم المتحركة في الخلفية */
+        @keyframes float {
+            0% { transform: translateY(0px) translateX(0px); }
+            50% { transform: translateY(-10px) translateX(10px); }
+            100% { transform: translateY(0px) translateX(0px); }
+        }
+        .floating-bg-1 {
+            animation: float 12s ease-in-out infinite;
+        }
+        .floating-bg-2 {
+            animation: float 18s ease-in-out infinite;
+        }
+        /* مخصص لتمرير سلس */
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 relative overflow-x-hidden pb-12">
 
+    <!-- غيوم ديكورية في الخلفية -->
+    <div class="absolute top-12 left-10 text-white/40 text-9xl floating-bg-1 pointer-events-none select-none z-0"><i class="fa-solid fa-cloud"></i></div>
+    <div class="absolute top-1/3 right-12 text-white/30 text-[12rem] floating-bg-2 pointer-events-none select-none z-0"><i class="fa-solid fa-cloud"></i></div>
+    <div class="absolute bottom-20 left-1/4 text-white/20 text-8xl floating-bg-1 pointer-events-none select-none z-0"><i class="fa-solid fa-cloud-sun"></i></div>
+
+    <!-- الهيدر الرئيسي / شريط التنقل -->
+    <header class="sticky top-0 z-40 w-full backdrop-blur-md bg-white/60 border-b border-sky-100/50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-400 to-sky-600 flex items-center justify-center text-white shadow-md shadow-sky-300">
+                    <i class="fa-solid fa-paper-plane text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black text-sky-800 tracking-wide">LeadMe</h1>
+                    <p class="text-xs text-sky-600 font-semibold">حلق في سماء إنجازاتك</p>
+                </div>
+            </div>
+            
+            <nav class="flex items-center gap-1 md:gap-3 bg-sky-100/50 p-1.5 rounded-xl text-sm font-semibold">
+                <a href="#dashboard" class="px-3 py-1.5 rounded-lg text-sky-700 hover:bg-white/80 transition-all flex items-center gap-1.5"><i class="fa-solid fa-gauge-high text-xs"></i> اللوحة</a>
+                <a href="#strategy" class="px-3 py-1.5 rounded-lg text-sky-700 hover:bg-white/80 transition-all flex items-center gap-1.5"><i class="fa-solid fa-compass text-xs"></i> الاستراتيجية</a>
+                <a href="#planner" class="px-3 py-1.5 rounded-lg text-sky-700 hover:bg-white/80 transition-all flex items-center gap-1.5"><i class="fa-solid fa-calendar-day text-xs"></i> اليومية</a>
+                <a href="#notes" class="px-3 py-1.5 rounded-lg text-sky-700 hover:bg-white/80 transition-all flex items-center gap-1.5"><i class="fa-solid fa-cloud text-xs"></i> سحابة الأفكار</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- المحتوى الرئيسي للموقع -->
+    <main class="max-w-7xl mx-auto px-4 mt-8 relative z-10">
+        
+        <!-- قسم 1: لوحة التحكم (التحفيز والترحاب) -->
+        <section id="dashboard" class="mb-10">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- رسالة الترحيب الملهمة -->
+                <div class="lg:col-span-2 cloud-card rounded-3xl p-6 md:p-8 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-white/90 to-sky-50/50">
+                    <div class="relative z-10">
+                        <span class="bg-sky-100 text-sky-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">شروق جديد 🌅</span>
+                        <h2 class="text-3xl md:text-4xl font-extrabold text-sky-900 mt-4 leading-tight">مرحباً بكِ في فضاء القيادة الذاتية!</h2>
+                        <p class="text-slate-600 mt-2 max-w-xl text-sm md:text-base leading-relaxed">
+                            تذكري دائماً: "النجاح لا يحدث مصادفة، بل هو انعكاس لخطواتكِ الصغيرة الموجهة نحو قيمكِ العليا وأهدافكِ الكبيرة في هذه السماء الواسعة."
+                        </p>
+                    </div>
+                    <div class="mt-6 p-4 rounded-2xl bg-sky-100/40 border border-sky-200/40 flex items-center gap-3">
+                        <div class="text-sky-500 text-xl"><i class="fa-solid fa-quote-right"></i></div>
+                        <p id="quoteText" class="text-xs md:text-sm text-sky-800 italic font-medium">خطوة واحدة في الاتجاه الصحيح تغنيكِ عن آلاف الخطوات العشوائية.</p>
+                    </div>
+                </div>
+
+                <!-- إحصائيات سريعة ومحفزة -->
+                <div class="cloud-card rounded-3xl p-6 flex flex-col justify-between bg-gradient-to-br from-white/90 to-sky-50/50">
+                    <h3 class="font-bold text-sky-950 text-lg mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-sky-500"></i> مؤشرات طيرانكِ اليوم
+                    </h3>
+                    
+                    <div class="space-y-4 my-auto">
+                        <!-- التقدم اليومي للمهام -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1 text-slate-600">
+                                <span>إنجاز المهام اليومية</span>
+                                <span id="dailyProgressText">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                                <div id="dailyProgressBar" class="bg-gradient-to-l from-sky-400 to-sky-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- إنجاز الأهداف الاستراتيجية -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1 text-slate-600">
+                                <span>إجمالي تقدم الأهداف الفرعية</span>
+                                <span id="subGoalsProgressText">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                                <div id="subGoalsProgressBar" class="bg-gradient-to-l from-emerald-400 to-teal-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- إحصائيات سريعة في الأسفل -->
+                    <div class="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-sky-100">
+                        <div class="text-center p-2 rounded-xl bg-sky-50/50">
+                            <span class="block text-xl font-extrabold text-sky-600" id="completedTasksCount">0</span>
+                            <span class="text-[10px] text-slate-500 font-bold">مهام مكتملة</span>
+                        </div>
+                        <div class="text-center p-2 rounded-xl bg-sky-50/50">
+                            <span class="block text-xl font-extrabold text-sky-600" id="totalNotesCount">0</span>
+                            <span class="text-[10px] text-slate-500 font-bold">أفكار مـدونة</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- قسم 2: ميثاق القيم الشخصية -->
+        <section id="values" class="mb-12">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h3 class="text-2xl font-black text-sky-900 flex items-center gap-2">
+                        <i class="fa-solid fa-star text-amber-400"></i> ميثاق قيمي الشخصية
+                    </h3>
+                    <p class="text-xs md:text-sm text-slate-500 mt-1">المبادئ الثابتة التي تسير طائرتكِ على أساسها وتحدد اتجاهاتكِ الصادقة.</p>
+                </div>
+                <button onclick="toggleValueModal(true)" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-xl shadow-md shadow-sky-200 transition-all flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-plus"></i> إضافة قيمة جديدة
+                </button>
+            </div>
+
+            <!-- شبكة القيم -->
+            <div id="valuesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- سيتم ملؤها بواسطة JS -->
+            </div>
+        </section>
+
+        <!-- قسم 3: التخطيط الاستراتيجي -->
+        <section id="strategy" class="mb-12 scroll-mt-24">
+            <div class="cloud-card rounded-3xl p-6 md:p-8 bg-gradient-to-br from-white/95 to-sky-50/40">
+                <div class="border-b border-sky-100 pb-6 mb-6">
+                    <h3 class="text-2xl font-black text-sky-900 flex items-center gap-2">
+                        <i class="fa-solid fa-compass text-sky-500"></i> منارة القيادة الاستراتيجية
+                    </h3>
+                    <p class="text-xs md:text-sm text-slate-500 mt-1">حددي أفقكِ البعيد وقسّميه إلى مراحل صغيرة محكمة للوصول الآمن.</p>
+                </div>
+
+                <!-- الهدف الاستراتيجي الأكبر -->
+                <div class="mb-8">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-sky-50/80 p-5 rounded-2xl border border-sky-100">
+                        <div class="flex-1">
+                            <span class="text-xs font-extrabold text-sky-600 block mb-1"><i class="fa-solid fa-flag-checkered"></i> الهدف الاستراتيجي الأكبر (The Horizon)</span>
+                            <h4 id="strategicGoalText" class="text-xl font-bold text-sky-900">انقري على زر التعديل لكتابة هدفكِ الاستراتيجي الأكبر...</h4>
+                        </div>
+                        <button onclick="editStrategicGoal()" class="bg-white hover:bg-sky-50 text-sky-600 font-bold py-2 px-4 rounded-xl border border-sky-200 transition-all flex items-center gap-2 self-start md:self-center text-sm">
+                            <i class="fa-solid fa-pen-to-square"></i> تعديل الهدف الأكبر
+                        </button>
+                    </div>
+                </div>
+
+                <!-- الأهداف الفرعية (Milestones) -->
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-extrabold text-slate-700 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-map-pin text-sky-500"></i> الأهداف الفرعية والمراحل المرحلية
+                        </h4>
+                        <button onclick="toggleSubGoalModal(true)" class="text-xs bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold py-1.5 px-3 rounded-lg transition-all flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> إضافة هدف فرعي
+                        </button>
+                    </div>
+
+                    <!-- قائمة الأهداف الفرعية التفاعلية -->
+                    <div id="subGoalsList" class="space-y-4">
+                        <!-- سيتم تعبئتها ديناميكياً بواسطة JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- تقسيم لعمودين للـ (اليومية والملاحظات) للتصفح الأكثر تنظيماً وعصرية -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- قسم 4: مخطط اليوم (6 أعمدة في الشاشات الكبيرة) -->
+            <section id="planner" class="lg:col-span-7 scroll-mt-24">
+                <div class="cloud-card rounded-3xl p-6 h-full flex flex-col justify-between bg-gradient-to-br from-white/95 to-sky-50/40">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-sky-100 pb-4 mb-4">
+                            <div>
+                                <h3 class="text-xl font-black text-sky-900 flex items-center gap-2">
+                                    <i class="fa-solid fa-calendar-day text-sky-500"></i> مخطط السحابة اليومي
+                                </h3>
+                                <p class="text-xs text-slate-500 mt-1">خططي ليومكِ وحققي أهدافكِ مهمة تلو الأخرى.</p>
+                            </div>
+                            <span class="text-xs font-bold px-2.5 py-1 bg-sky-100 text-sky-700 rounded-lg" id="currentDateDisplay">..</span>
+                        </div>
+
+                        <!-- إدخال مهمة جديدة -->
+                        <form id="todoForm" onsubmit="addTodoTask(event)" class="mb-4">
+                            <div class="flex gap-2">
+                                <input type="text" id="todoInput" placeholder="اكتبِ مهمة جديدة لليوم هنا..." required
+                                       class="flex-1 bg-sky-50/60 border border-sky-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
+                                <button type="submit" class="bg-sky-500 hover:bg-sky-600 text-white font-bold px-4 rounded-xl transition-all shadow-md shadow-sky-200">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- قائمة المهام التفاعلية -->
+                        <div id="todoList" class="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                            <!-- سيتم تعبئتها بواسطة JS -->
+                        </div>
+                    </div>
+
+                    <!-- رسالة تحفيزية متغيرة لليومية -->
+                    <div class="mt-6 pt-4 border-t border-sky-100 flex items-center gap-3 text-xs text-sky-700/80 bg-sky-100/20 p-3 rounded-xl">
+                        <span class="text-lg"><i class="fa-regular fa-lightbulb"></i></span>
+                        <p>ابدئي بالمهام الأكثر أهمية وصعوبة صباحاً لضمان يوم حافل بالإنجاز والراحة.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- قسم 5: سحابة الأفكار والملاحظات (5 أعمدة) -->
+            <section id="notes" class="lg:col-span-5 scroll-mt-24">
+                <div class="cloud-card rounded-3xl p-6 h-full flex flex-col justify-between bg-gradient-to-br from-white/95 to-sky-50/40">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-sky-100 pb-4 mb-4">
+                            <div>
+                                <h3 class="text-xl font-black text-sky-900 flex items-center gap-2">
+                                    <i class="fa-solid fa-cloud text-sky-500"></i> سحابة الأفكار والخواطر
+                                </h3>
+                                <p class="text-xs text-slate-500 mt-1">دوني أفكاركِ الطائرة قبل أن تتبخر!</p>
+                            </div>
+                            <button onclick="toggleNoteModal(true)" class="text-xs bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold py-1.5 px-3 rounded-lg transition-all flex items-center gap-1">
+                                <i class="fa-solid fa-pen"></i> تدوين
+                            </button>
+                        </div>
+
+                        <!-- شبكة الملاحظات والأفكار المصغرة -->
+                        <div id="notesGrid" class="grid grid-cols-1 gap-3 max-h-[380px] overflow-y-auto pr-1">
+                            <!-- سيتم تعبئتها بواسطة JS -->
+                        </div>
+                    </div>
+                    
+                    <div class="text-[10px] text-center text-sky-600/60 mt-4">
+                        أفكاركِ آمنة ومحفوظة تلقائياً في جهازكِ الشخصي.
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- قسم 6: سجل الإنجازات والانتصارات لتغذية الشغف -->
+        <section class="mt-12">
+            <div class="cloud-card rounded-3xl p-6 bg-gradient-to-r from-sky-400 to-sky-600 text-white relative overflow-hidden shadow-lg shadow-sky-200">
+                <div class="absolute -right-10 -bottom-10 text-white/10 text-9xl pointer-events-none"><i class="fa-solid fa-trophy"></i></div>
+                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div>
+                        <h3 class="text-xl font-extrabold mb-1 flex items-center gap-2"><i class="fa-solid fa-trophy text-yellow-300"></i> لوحة الانتصارات الشخصية</h3>
+                        <p class="text-xs md:text-sm text-sky-100">كل فكرة أو مهمة منجزة هي فوز حقيقي يبني مستقبلكِ المشرق.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-2xl border border-white/10 text-center">
+                            <span class="block text-2xl font-black" id="victoryTotalCount">0</span>
+                            <span class="text-[10px] text-sky-100 font-bold">إجمالي المنجزات</span>
+                        </div>
+                        <button onclick="clearCompletedHistory()" class="bg-red-400/30 hover:bg-red-500/40 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition-all border border-white/10">
+                            أرشفة المهام القديمة
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- فوتر بسيط وعصري -->
+    <footer class="mt-16 text-center text-xs text-sky-800/60 font-medium">
+        <p>LeadMe © 2026 - صُمم بكل حب ليقودكِ نحو سماء الإنجاز والإتقان 🌌</p>
+    </footer>
+
+    <!-- ==================== النوافذ المنبثقة التفاعلية (Modals) ==================== -->
+
+    <!-- 1. نافذة إضافة قيمة جديدة -->
+    <div id="valueModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="toggleValueModal(false)" class="absolute top-4 left-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <h4 class="text-lg font-black text-sky-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-star text-amber-400"></i> إضافة قيمة جديدة للميثاق</h4>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">اسم القيمة</label>
+                    <input type="text" id="valueTitleInput" placeholder="مثل: الإتزان، التعلم المستمر، الأثر..." 
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">وصف موجز أو شعار القيمة</label>
+                    <textarea id="valueDescInput" placeholder="أكتبي عبارة تلخص معنى هذه القيمة لكِ..." rows="2"
+                              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">اختر أيقونة معبرة</label>
+                    <div class="grid grid-cols-5 gap-2" id="iconSelector">
+                        <button type="button" onclick="selectValueIcon('star')" class="value-icon-btn p-2 rounded-xl border border-sky-100 hover:bg-sky-50 text-amber-400 active-icon" data-icon="star"><i class="fa-solid fa-star"></i></button>
+                        <button type="button" onclick="selectValueIcon('heart')" class="value-icon-btn p-2 rounded-xl border border-slate-100 hover:bg-sky-50 text-red-400" data-icon="heart"><i class="fa-solid fa-heart"></i></button>
+                        <button type="button" onclick="selectValueIcon('book')" class="value-icon-btn p-2 rounded-xl border border-slate-100 hover:bg-sky-50 text-sky-500" data-icon="book"><i class="fa-solid fa-book-open"></i></button>
+                        <button type="button" onclick="selectValueIcon('lightbulb')" class="value-icon-btn p-2 rounded-xl border border-slate-100 hover:bg-sky-50 text-yellow-500" data-icon="lightbulb"><i class="fa-solid fa-lightbulb"></i></button>
+                        <button type="button" onclick="selectValueIcon('compass')" class="value-icon-btn p-2 rounded-xl border border-slate-100 hover:bg-sky-50 text-emerald-500" data-icon="compass"><i class="fa-solid fa-compass"></i></button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex gap-2">
+                <button onclick="saveValue()" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2.5 rounded-xl transition-all">حفظ القيمة</button>
+                <button onclick="toggleValueModal(false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. نافذة إضافة هدف فرعي جديد -->
+    <div id="subGoalModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="toggleSubGoalModal(false)" class="absolute top-4 left-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <h4 class="text-lg font-black text-sky-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-map-pin text-sky-500"></i> إضافة مرحلة / هدف فرعي</h4>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">الهدف الفرعي</label>
+                    <input type="text" id="subGoalTitleInput" placeholder="مثال: إنهاء قراءة كتاب قيادي، تطوير مهارة العرض..." 
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">الرغبة أو الهدف النهائي من هذا الإجراء</label>
+                    <input type="text" id="subGoalTargetInput" placeholder="مثال: قراءة 200 صفحة، التمرن 3 مرات..." 
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
+                </div>
+            </div>
+            
+            <div class="mt-6 flex gap-2">
+                <button onclick="saveSubGoal()" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2.5 rounded-xl transition-all">إضافة الهدف</button>
+                <button onclick="toggleSubGoalModal(false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. نافذة إضافة ملاحظة / فكرة جديدة -->
+    <div id="noteModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="toggleNoteModal(false)" class="absolute top-4 left-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <h4 class="text-lg font-black text-sky-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-cloud text-sky-500"></i> تدوين فكرة طائرة أو خاطرة</h4>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">عنوان الفكرة السريع</label>
+                    <input type="text" id="noteTitleInput" placeholder="أكتبي عنواناً ملخصاً للفكرة..." 
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">تفاصيل الفكرة</label>
+                    <textarea id="noteContentInput" placeholder="أطلقي العنان لخيالكِ ودوني التفاصيل هنا..." rows="4"
+                              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all"></textarea>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex gap-2">
+                <button onclick="saveNote()" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2.5 rounded-xl transition-all">إرسال للسحابة</button>
+                <button onclick="toggleNoteModal(false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. تعديل الهدف الاستراتيجي الأكبر -->
+    <div id="strategicGoalModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="toggleStrategicGoalModal(false)" class="absolute top-4 left-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <h4 class="text-lg font-black text-sky-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-flag-checkered text-sky-500"></i> تعديل هدف الأفق الاستراتيجي</h4>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">هدف الأفق الأكبر</label>
+                    <textarea id="strategicGoalInput" placeholder="أكتبي هدفكِ الاستراتيجي الأكبر الموجه لحياتكِ حالياً..." rows="3"
+                              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all"></textarea>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex gap-2">
+                <button onclick="saveStrategicGoal()" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2.5 rounded-xl transition-all">تحديث الهدف</button>
+                <button onclick="toggleStrategicGoalModal(false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== الجزء البرمجي الذكي وحفظ البيانات ==================== -->
+    <script>
+        // مصفوفة اقتباسات تحفيزية متغيرة لـ LeadMe
+        const skyQuotes = [
+            "خطوة واحدة في الاتجاه الصحيح تغنيكِ عن آلاف الخطوات العشوائية.",
+            "ليست السحب هي التي تتحرك بل شغفكِ هو الذي يحركِ الأرض تحت قدميكِ.",
+            "حددي أفقكِ كالسماء، لا حدود لطموحاتكِ ولا قيود لمدى رغبتكِ.",
+            "التميز لا يحتاج لمعجزات، بل لتراكم الخطوات اليومية الصغيرة بحب وإتقان.",
+            "المرونة مع التفاصيل والصرامة مع الأهداف، سر طيران القياديين الناجحين."
+        ];
+
+        // تهيئة بيانات افتراضية
+        let appState = {
+            strategicGoal: "تأسيس هوية مهنية قيادية ككاتبة ومطورة أعمال ذات أثر مستدام.",
+            values: [
+                { id: "1", title: "الأثر", desc: "أن أترك بصمة إيجابية في حياة كل شخص أقابله.", icon: "star" },
+                { id: "2", title: "الإتقان", desc: "بذل غاية الجهد لتقديم جودة تليق بتطلعاتي.", icon: "compass" },
+                { id: "3", title: "التعلم المستمر", desc: "الحياة سماء لا تتوقف عن التوسع، وأنا سحابة تمتص المعرفة.", icon: "book" }
+            ],
+            subGoals: [
+                { id: "1", title: "قراءة 5 كتب متخصصة في القيادة والتفكير الاستراتيجي", target: 5, current: 2 },
+                { id: "2", title: "أخذ دورة تدريبية احترافية في التخطيط وبناء المشاريع", target: 1, current: 1 }
+            ],
+            todos: [
+                { id: "1", title: "قراءة 20 صفحة من كتاب التفكير الإستراتيجي", completed: false },
+                { id: "2", title: "مراجعة ميزانية الأسبوع وتعديل خطة المشروع القادم", completed: true },
+                { id: "3", title: "كتابة خاطرة ملهمة في سحابة الأفكار اليومية", completed: false }
+            ],
+            notes: [
+                { id: "1", title: "فكرة مشروع تبادل كتب", content: "تأسيس منصة صغيرة لتبادل الكتب القيادية مجاناً بين المهتمين بالنمو الذاتي.", date: "١٨ مايو ٢٠٢٦" }
+            ],
+            selectedIcon: 'star'
+        };
+
+        // دالة حفظ البيانات محلياً
+        function saveToLocalStorage() {
+            localStorage.setItem('leadme_state_v1', JSON.stringify(appState));
+            updateUI();
+        }
+
+        // دالة استرجاع البيانات
+        function loadFromLocalStorage() {
+            const savedData = localStorage.getItem('leadme_state_v1');
+            if (savedData) {
+                appState = JSON.parse(savedData);
+            }
+            updateUI();
+        }
+
+        // تحديث جميع عناصر واجهة المستخدم بشكل فوري وديناميكي
+        function updateUI() {
+            // 1. التاريخ اليومي
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('currentDateDisplay').textContent = new Date().toLocaleDateString('ar-EG', options);
+
+            // 2. تحديث شاشة الاقتباسات بشكل عشوائي خفيف
+            const randIndex = Math.floor(Math.random() * skyQuotes.length);
+            document.getElementById('quoteText').textContent = skyQuotes[randIndex];
+
+            // 3. تحديث الهدف الاستراتيجي
+            document.getElementById('strategicGoalText').textContent = appState.strategicGoal || "اضغطي على الزر لوضع هدفكِ الاستراتيجي الأكبر لتوجيه مساركِ.";
+
+            // 4. تحديث قائمة القيم الشخصية
+            const valuesGrid = document.getElementById('valuesGrid');
+            valuesGrid.innerHTML = '';
+            appState.values.forEach(val => {
+                let iconHTML = '';
+                if(val.icon === 'star') iconHTML = '<i class="fa-solid fa-star text-amber-400"></i>';
+                else if(val.icon === 'heart') iconHTML = '<i class="fa-solid fa-heart text-red-400"></i>';
+                else if(val.icon === 'book') iconHTML = '<i class="fa-solid fa-book-open text-sky-500"></i>';
+                else if(val.icon === 'lightbulb') iconHTML = '<i class="fa-solid fa-lightbulb text-yellow-500"></i>';
+                else iconHTML = '<i class="fa-solid fa-compass text-emerald-500"></i>';
+
+                valuesGrid.innerHTML += `
+                    <div class="cloud-card rounded-2xl p-5 border border-sky-100 flex items-start gap-4">
+                        <div class="text-2xl">${iconHTML}</div>
+                        <div class="flex-1">
+                            <h5 class="font-bold text-sky-900 mb-1 text-base flex items-center justify-between">
+                                ${val.title}
+                                <button onclick="deleteValue('${val.id}')" class="text-[10px] text-red-300 hover:text-red-500 transition-all"><i class="fa-solid fa-trash"></i></button>
+                            </h5>
+                            <p class="text-xs text-slate-500 leading-relaxed">${val.desc}</p>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // 5. تحديث الأهداف الفرعية (Milestones)
+            const subGoalsList = document.getElementById('subGoalsList');
+            subGoalsList.innerHTML = '';
+            let totalSubGoalsProgSum = 0;
+            appState.subGoals.forEach(goal => {
+                const percentage = Math.round((goal.current / goal.target) * 100);
+                totalSubGoalsProgSum += percentage;
+
+                subGoalsList.innerHTML += `
+                    <div class="bg-white/80 p-4 rounded-2xl border border-sky-100/50 hover:border-sky-200 transition-all flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="flex-1 w-full">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-bold text-sky-900">${goal.title}</span>
+                                <span class="text-xs font-semibold text-slate-500">${goal.current} من أصل ${goal.target} (${percentage}%)</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div class="bg-gradient-to-l from-sky-400 to-sky-600 h-full rounded-full" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 self-end md:self-center">
+                            <button onclick="updateSubGoalProgress('${goal.id}', -1)" class="w-8 h-8 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-600 flex items-center justify-center font-bold text-sm transition-all"><i class="fa-solid fa-minus"></i></button>
+                            <button onclick="updateSubGoalProgress('${goal.id}', 1)" class="w-8 h-8 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-600 flex items-center justify-center font-bold text-sm transition-all"><i class="fa-solid fa-plus"></i></button>
+                            <button onclick="deleteSubGoal('${goal.id}')" class="text-xs text-red-300 hover:text-red-500 transition-all p-2"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // حساب النسبة الكلية للأهداف الفرعية
+            const subGoalsAvgProg = appState.subGoals.length > 0 ? Math.round(totalSubGoalsProgSum / appState.subGoals.length) : 0;
+            document.getElementById('subGoalsProgressText').textContent = `${subGoalsAvgProg}%`;
+            document.getElementById('subGoalsProgressBar').style.width = `${subGoalsAvgProg}%`;
+
+            // 6. تحديث قائمة المهام اليومية (Todos)
+            const todoList = document.getElementById('todoList');
+            todoList.innerHTML = '';
+            let completedCount = 0;
+            appState.todos.forEach(todo => {
+                if (todo.completed) completedCount++;
+
+                todoList.innerHTML += `
+                    <div class="flex items-center justify-between p-3 rounded-xl hover:bg-sky-50/50 transition-all border-b border-sky-100/30 ${todo.completed ? 'opacity-60 bg-sky-50/20' : ''}">
+                        <div class="flex items-center gap-3">
+                            <button onclick="toggleTodoState('${todo.id}')" class="w-5 h-5 rounded-md border flex items-center justify-center transition-all ${todo.completed ? 'bg-sky-500 border-sky-500 text-white' : 'border-sky-300 hover:border-sky-500'}">
+                                ${todo.completed ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                            </button>
+                            <span class="text-sm ${todo.completed ? 'line-through text-slate-400 font-medium' : 'text-slate-700 font-semibold'}">${todo.title}</span>
+                        </div>
+                        <button onclick="deleteTodo('${todo.id}')" class="text-slate-300 hover:text-red-500 transition-all"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                    </div>
+                `;
+            });
+
+            // حساب النسبة الكلية لليومية
+            const todoPercentage = appState.todos.length > 0 ? Math.round((completedCount / appState.todos.length) * 100) : 0;
+            document.getElementById('dailyProgressText').textContent = `${todoPercentage}%`;
+            document.getElementById('dailyProgressBar').style.width = `${todoPercentage}%`;
+
+            // 7. تحديث إحصائيات لوحة التحكم وسجل الفوز
+            document.getElementById('completedTasksCount').textContent = completedCount;
+            document.getElementById('totalNotesCount').textContent = appState.notes.length;
+            document.getElementById('victoryTotalCount').textContent = completedCount + appState.subGoals.filter(g => g.current >= g.target).length;
+
+            // 8. تحديث سحابة الأفكار والخواطر
+            const notesGrid = document.getElementById('notesGrid');
+            notesGrid.innerHTML = '';
+            appState.notes.forEach(note => {
+                notesGrid.innerHTML += `
+                    <div class="p-4 bg-sky-50/70 border border-sky-100/50 rounded-2xl relative group">
+                        <button onclick="deleteNote('${note.id}')" class="absolute top-3 left-3 text-xs text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><i class="fa-solid fa-trash"></i></button>
+                        <span class="text-[10px] text-sky-600 font-bold block mb-1">${note.date}</span>
+                        <h5 class="font-bold text-sky-950 text-sm mb-1">${note.title}</h5>
+                        <p class="text-xs text-slate-600 leading-relaxed">${note.content}</p>
+                    </div>
+                `;
+            });
+        }
+
+        // ==================== وظائف التحكم بالأحداث وإدارتها ====================
+
+        // إدارة النوافذ المنبثقة
+        function toggleValueModal(show) {
+            document.getElementById('valueModal').style.display = show ? 'flex' : 'none';
+        }
+        function toggleSubGoalModal(show) {
+            document.getElementById('subGoalModal').style.display = show ? 'flex' : 'none';
+        }
+        function toggleNoteModal(show) {
+            document.getElementById('noteModal').style.display = show ? 'flex' : 'none';
+        }
+        function toggleStrategicGoalModal(show) {
+            document.getElementById('strategicGoalModal').style.display = show ? 'flex' : 'none';
+        }
+
+        // 1. تحديد أيقونة القيمة
+        function selectValueIcon(iconName) {
+            appState.selectedIcon = iconName;
+            document.querySelectorAll('.value-icon-btn').forEach(btn => {
+                btn.classList.remove('active-icon', 'border-sky-300', 'bg-sky-50');
+                btn.classList.add('border-slate-100');
+                if (btn.getAttribute('data-icon') === iconName) {
+                    btn.classList.add('active-icon', 'border-sky-300', 'bg-sky-50');
+                    btn.classList.remove('border-slate-100');
+                }
+            });
+        }
+
+        // 2. حفظ وحذف القيم
+        function saveValue() {
+            const title = document.getElementById('valueTitleInput').value.trim();
+            const desc = document.getElementById('valueDescInput').value.trim();
+            if (!title) return;
+
+            appState.values.push({
+                id: Date.now().toString(),
+                title: title,
+                desc: desc || "مبدأ يمثل سلوكي وسيري اليومي نحو تحقيق ذاتي.",
+                icon: appState.selectedIcon
+            });
+
+            // إعادة تصفير الحقول
+            document.getElementById('valueTitleInput').value = '';
+            document.getElementById('valueDescInput').value = '';
+            toggleValueModal(false);
+            saveToLocalStorage();
+        }
+
+        function deleteValue(id) {
+            appState.values = appState.values.filter(val => val.id !== id);
+            saveToLocalStorage();
+        }
+
+        // 3. تعديل وحفظ الهدف الاستراتيجي الأكبر
+        function editStrategicGoal() {
+            document.getElementById('strategicGoalInput').value = appState.strategicGoal;
+            toggleStrategicGoalModal(true);
+        }
+
+        function saveStrategicGoal() {
+            const text = document.getElementById('strategicGoalInput').value.trim();
+            if (text) {
+                appState.strategicGoal = text;
+                toggleStrategicGoalModal(false);
+                saveToLocalStorage();
+            }
+        }
+
+        // 4. حفظ وحذف الأهداف الفرعية (Milestones)
+        function saveSubGoal() {
+            const title = document.getElementById('subGoalTitleInput').value.trim();
+            const targetVal = parseInt(document.getElementById('subGoalTargetInput').value) || 1;
+            if (!title) return;
+
+            appState.subGoals.push({
+                id: Date.now().toString(),
+                title: title,
+                target: targetVal,
+                current: 0
+            });
+
+            document.getElementById('subGoalTitleInput').value = '';
+            document.getElementById('subGoalTargetInput').value = '';
+            toggleSubGoalModal(false);
+            saveToLocalStorage();
+        }
+
+        function updateSubGoalProgress(id, amount) {
+            appState.subGoals = appState.subGoals.map(goal => {
+                if (goal.id === id) {
+                    let newVal = goal.current + amount;
+                    if (newVal < 0) newVal = 0;
+                    if (newVal > goal.target) newVal = goal.target;
+                    return { ...goal, current: newVal };
+                }
+                return goal;
+            });
+            saveToLocalStorage();
+        }
+
+        function deleteSubGoal(id) {
+            appState.subGoals = appState.subGoals.filter(goal => goal.id !== id);
+            saveToLocalStorage();
+        }
+
+        // 5. حفظ وحذف وتعديل حالة المهام اليومية (Todos)
+        function addTodoTask(event) {
+            event.preventDefault();
+            const text = document.getElementById('todoInput').value.trim();
+            if (!text) return;
+
+            appState.todos.push({
+                id: Date.now().toString(),
+                title: text,
+                completed: false
+            });
+
+            document.getElementById('todoInput').value = '';
+            saveToLocalStorage();
+        }
+
+        function toggleTodoState(id) {
+            appState.todos = appState.todos.map(todo => {
+                if (todo.id === id) {
+                    return { ...todo, completed: !todo.completed };
+                }
+                return todo;
+            });
+            saveToLocalStorage();
+        }
+
+        function deleteTodo(id) {
+            appState.todos = appState.todos.filter(todo => todo.id !== id);
+            saveToLocalStorage();
+        }
+
+        function clearCompletedHistory() {
+            appState.todos = appState.todos.filter(todo => !todo.completed);
+            saveToLocalStorage();
+        }
+
+        // 6. حفظ وحذف الملاحظات (Notes)
+        function saveNote() {
+            const title = document.getElementById('noteTitleInput').value.trim();
+            const content = document.getElementById('noteContentInput').value.trim();
+            if (!title || !content) return;
+
+            const currentDate = new Date();
+            const formattedDate = currentDate.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            appState.notes.unshift({
+                id: Date.now().toString(),
+                title: title,
+                content: content,
+                date: formattedDate
+            });
+
+            document.getElementById('noteTitleInput').value = '';
+            document.getElementById('noteContentInput').value = '';
+            toggleNoteModal(false);
+            saveToLocalStorage();
+        }
+
+        function deleteNote(id) {
+            appState.notes = appState.notes.filter(note => note.id !== id);
+            saveToLocalStorage();
+        }
+
+        // البدء والتحميل الفوري عند جاهزية الصفحة
+        window.onload = function() {
+            loadFromLocalStorage();
+        };
+    </script>
+</body>
+</html>
+
+```
