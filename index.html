@@ -1,1005 +1,759 @@
-```html
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LeadMe | حلق نحو أهدافك بسحابك الخاص</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Cairo -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+```react
+import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  signInWithCustomToken, 
+  signInAnonymously, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  onSnapshot,
+  getDoc
+} from 'firebase/firestore';
+
+// إعداد بيئة Firebase باستخدام المتغيرات العامة الموفرة
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'leadme-app';
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  // بيانات التطبيق الرئيسية
+  const [vision, setVision] = useState('');
+  const [values, setValues] = useState('');
+  const [strategicGoal, setStrategicGoal] = useState('');
+  const [subGoals, setSubGoals] = useState(['']);
+  const [tasks, setTasks] = useState([]);
+  const [routines, setRoutines] = useState([]);
+  const [notes, setNotes] = useState('');
+  
+  // حالات الإدخال المؤقتة
+  const [newTaskText, setNewTaskText] = useState('');
+  const [newRoutineText, setNewRoutineText] = useState('');
+  
+  // حالة الذكاء الاصطناعي للتحفيز
+  const [aiMotivation, setAiMotivation] = useState('');
+  const [generatingMotivation, setGeneratingMotivation] = useState(false);
+  const [motivationError, setMotivationError] = useState('');
+
+  // 1. تسجيل الدخول والمصادقة (اتباع القاعدة 3)
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (error) {
+        console.error("Auth initialization failed:", error);
+      }
+    };
+    initAuth();
+
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 2. جلب البيانات من Firestore عند تسجيل الدخول (اتباع القاعدة 1 و 3)
+  useEffect(() => {
+    if (!user) return;
+
+    // مسار حفظ البيانات الشخصية للمستخدم حسب القاعدة 1 المحددة بدقة
+    const userDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'dashboard', 'mainData');
     
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        cairo: ['Cairo', 'sans-serif'],
-                    },
-                    colors: {
-                        sky: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            200: '#bae6fd',
-                            300: '#7dd3fc',
-                            400: '#38bdf8',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1',
-                            800: '#075985',
-                            900: '#0c4a6e',
-                        }
-                    }
-                }
-            }
+    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setVision(data.vision || '');
+        setValues(data.values || '');
+        setStrategicGoal(data.strategicGoal || '');
+        setSubGoals(data.subGoals || ['']);
+        setTasks(data.tasks || []);
+        setRoutines(data.routines || []);
+        setNotes(data.notes || '');
+      } else {
+        // تهيئة مستند فارغ للمستخدم الجديد
+        saveDataToCloud({
+          vision: '',
+          values: '',
+          strategicGoal: '',
+          subGoals: [''],
+          tasks: [],
+          routines: [],
+          notes: ''
+        });
+      }
+    }, (error) => {
+      console.error("خطأ في قراءة البيانات السحابية:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // دالة الحفظ السحابي
+  const saveDataToCloud = async (updatedFields) => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const userDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'dashboard', 'mainData');
+      await setDoc(userDocRef, updatedFields, { merge: true });
+    } catch (error) {
+      console.error("خطأ أثناء الحفظ السحابي:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // تحديث القيم وحفظها مع تأخير ذكي (Debounce اختياري أو تحديث عند تغيير الحقول)
+  const updateVision = (val) => { setVision(val); saveDataToCloud({ vision: val }); };
+  const updateValues = (val) => { setValues(val); saveDataToCloud({ values: val }); };
+  const updateStrategicGoal = (val) => { setStrategicGoal(val); saveDataToCloud({ strategicGoal: val }); };
+  const updateNotes = (val) => { setNotes(val); saveDataToCloud({ notes: val }); };
+
+  // إدارة الأهداف الفرعية
+  const handleSubGoalChange = (index, value) => {
+    const updated = [...subGoals];
+    updated[index] = value;
+    setSubGoals(updated);
+    saveDataToCloud({ subGoals: updated });
+  };
+
+  const addSubGoal = () => {
+    const updated = [...subGoals, ''];
+    setSubGoals(updated);
+    saveDataToCloud({ subGoals: updated });
+  };
+
+  const removeSubGoal = (index) => {
+    if (subGoals.length === 1) {
+      const updated = [''];
+      setSubGoals(updated);
+      saveDataToCloud({ subGoals: updated });
+      return;
+    }
+    const updated = subGoals.filter((_, i) => i !== index);
+    setSubGoals(updated);
+    saveDataToCloud({ subGoals: updated });
+  };
+
+  // إدارة المهام اليومية
+  const addTask = (e) => {
+    e.preventDefault();
+    if (!newTaskText.trim()) return;
+    const newTask = {
+      id: Date.now().toString(),
+      text: newTaskText.trim(),
+      completed: false,
+      createdAt: new Date().toISOString()
+    };
+    const updated = [newTask, ...tasks];
+    setTasks(updated);
+    setNewTaskText('');
+    saveDataToCloud({ tasks: updated });
+  };
+
+  const toggleTask = (taskId) => {
+    const updated = tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t);
+    setTasks(updated);
+    saveDataToCloud({ tasks: updated });
+  };
+
+  const deleteTask = (taskId) => {
+    const updated = tasks.filter(t => t.id !== taskId);
+    setTasks(updated);
+    saveDataToCloud({ tasks: updated });
+  };
+
+  const clearCompletedTasks = () => {
+    const updated = tasks.filter(t => !t.completed);
+    setTasks(updated);
+    saveDataToCloud({ tasks: updated });
+  };
+
+  // إدارة الروتين اليومي
+  const addRoutine = (e) => {
+    e.preventDefault();
+    if (!newRoutineText.trim()) return;
+    const newRoutine = {
+      id: Date.now().toString(),
+      text: newRoutineText.trim(),
+      completedToday: false,
+      streak: 0,
+      lastCompletedDate: null
+    };
+    const updated = [...routines, newRoutine];
+    setRoutines(updated);
+    setNewRoutineText('');
+    saveDataToCloud({ routines: updated });
+  };
+
+  const toggleRoutine = (routineId) => {
+    const todayStr = new Date().toDateString();
+    const updated = routines.map(r => {
+      if (r.id === routineId) {
+        const isCompleted = !r.completedToday;
+        let newStreak = r.streak || 0;
+        if (isCompleted) {
+          // إذا تم الإنجاز اليوم ولم يتم الحساب مسبقاً
+          if (r.lastCompletedDate !== todayStr) {
+            newStreak += 1;
+          }
+        } else {
+          // التراجع عن الإنجاز اليومي
+          if (newStreak > 0) newStreak -= 1;
         }
-    </script>
-    <style>
-        body {
-            font-family: 'Cairo', sans-serif;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);
-            background-attachment: fixed;
-        }
-        .cloud-card {
-            backdrop-filter: blur(8px);
-            background-color: rgba(255, 255, 255, 0.85);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.1), 0 8px 10px -6px rgba(14, 165, 233, 0.05);
-            transition: all 0.3s ease;
-        }
-        .cloud-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 25px -5px rgba(14, 165, 233, 0.15), 0 10px 10px -5px rgba(14, 165, 233, 0.1);
-        }
-        @keyframes float {
-            0% { transform: translateY(0px) translateX(0px); }
-            50% { transform: translateY(-10px) translateX(10px); }
-            100% { transform: translateY(0px) translateX(0px); }
-        }
-        .floating-bg-1 { animation: float 12s ease-in-out infinite; }
-        .floating-bg-2 { animation: float 18s ease-in-out infinite; }
-        html { scroll-behavior: smooth; }
-    </style>
-</head>
-<body class="min-h-screen text-slate-800 relative overflow-x-hidden pb-12">
-
-    <!-- غيوم ديكورية في الخلفية -->
-    <div class="absolute top-12 left-10 text-white/40 text-9xl floating-bg-1 pointer-events-none select-none z-0"><i class="fa-solid fa-cloud"></i></div>
-    <div class="absolute top-1/3 right-12 text-white/30 text-[12rem] floating-bg-2 pointer-events-none select-none z-0"><i class="fa-solid fa-cloud"></i></div>
-    <div class="absolute bottom-20 left-1/4 text-white/20 text-8xl floating-bg-1 pointer-events-none select-none z-0"><i class="fa-solid fa-cloud-sun"></i></div>
-
-    <!-- رسائل التنبيه العائمة المخصصة للمستخدم بدلاً من alert() -->
-    <div id="toastNotification" class="fixed top-5 left-5 z-50 transform -translate-x-full transition-all duration-300 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-sm">
-        <span id="toastIcon" class="text-sky-400 text-lg"><i class="fa-solid fa-circle-info"></i></span>
-        <span id="toastMessage">جاري التحميل...</span>
-    </div>
-
-    <!-- ==================== شاشة تسجيل الدخول وبوابة الحسابات ==================== -->
-    <div id="authContainer" class="min-h-screen flex items-center justify-center p-4 relative z-20">
-        <div class="cloud-card max-w-md w-full rounded-3xl p-8 bg-white/90 shadow-2xl relative overflow-hidden">
-            <!-- الهيدر في شاشة الدخول -->
-            <div class="text-center mb-8">
-                <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-sky-400 to-sky-600 flex items-center justify-center text-white shadow-lg shadow-sky-200 mx-auto mb-4">
-                    <i class="fa-solid fa-paper-plane text-2xl"></i>
-                </div>
-                <h2 class="text-3xl font-black text-sky-800 tracking-wide">LeadMe</h2>
-                <p class="text-sm text-sky-600 font-semibold mt-1">بوابتك السحابية الشخصية للقيادة الذاتية</p>
-            </div>
-
-            <!-- نموذج تسجيل الدخول / التسجيل -->
-            <div class="space-y-4">
-                <div class="flex bg-sky-100/50 p-1 rounded-xl text-sm font-bold text-center" id="authTabs">
-                    <button onclick="switchAuthTab('login')" id="tabLogin" class="flex-1 py-2 rounded-lg bg-white text-sky-800 shadow-sm transition-all">تسجيل الدخول</button>
-                    <button onclick="switchAuthTab('register')" id="tabRegister" class="flex-1 py-2 rounded-lg text-sky-600 hover:text-sky-800 transition-all">إنشاء حساب جديد</button>
-                </div>
-
-                <form id="authForm" onsubmit="handleAuthSubmit(event)">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">البريد الإلكتروني</label>
-                            <div class="relative">
-                                <span class="absolute right-3 top-3 text-slate-400 text-sm"><i class="fa-regular fa-envelope"></i></span>
-                                <input type="email" id="authEmail" placeholder="name@example.com" required
-                                       class="w-full bg-slate-50 border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">كلمة المرور</label>
-                            <div class="relative">
-                                <span class="absolute right-3 top-3 text-slate-400 text-sm"><i class="fa-solid fa-lock"></i></span>
-                                <input type="password" id="authPassword" placeholder="••••••••" required minlength="6"
-                                       class="w-full bg-slate-50 border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
-                            </div>
-                        </div>
-
-                        <button type="submit" id="authSubmitBtn" class="w-full bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-sky-200 transition-all flex items-center justify-center gap-2 mt-2">
-                            <span>ابدأ التحليق الآن</span> <i class="fa-solid fa-arrow-left"></i>
-                        </button>
-                    </div>
-                </form>
-
-                <div class="relative flex py-2 items-center">
-                    <div class="flex-grow border-t border-slate-200"></div>
-                    <span class="flex-shrink mx-4 text-slate-400 text-xs font-bold">أو</span>
-                    <div class="flex-grow border-t border-slate-200"></div>
-                </div>
-
-                <button onclick="loginAsGuest()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm border border-slate-200/50">
-                    <i class="fa-solid fa-user-ninja"></i> الدخول كضيف (سجل مؤقت)
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== شاشة لوحة التحكم والتخطيط الرئيسية (مخفية قبل الدخول) ==================== -->
-    <div id="mainDashboard" class="hidden">
-        <!-- الهيدر الرئيسي -->
-        <header class="sticky top-0 z-40 w-full backdrop-blur-md bg-white/70 border-b border-sky-100/50 px-4 py-3">
-            <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-400 to-sky-600 flex items-center justify-center text-white shadow-md shadow-sky-300">
-                        <i class="fa-solid fa-paper-plane text-lg"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-black text-sky-800 tracking-wide">LeadMe</h1>
-                        <p class="text-xs text-sky-600 font-semibold">حلق في سماء إنجازاتك</p>
-                    </div>
-                </div>
-                
-                <nav class="flex items-center gap-1 md:gap-3 bg-sky-100/50 p-1.5 rounded-xl text-xs sm:text-sm font-semibold">
-                    <a href="#dashboard" class="px-2 sm:px-3 py-1.5 rounded-lg text-sky-700 hover:bg-white/80 transition-all flex items-center gap-1.5"><i class="fa-solid fa-gauge-high"></i> اللوحة</a>
-                    <a href="#strategy" class="px-2 sm:px-3 py-1.5 rounded-lg text-sky-700 hover:bg-white/80 transition-all flex items-center gap-1.5"><i class="fa-solid fa-compass"></i> الاستراتيجية</a>
-                    <a href="#planner" class="px-2 sm:px-3 py-1.5 rounded-lg text-sky-700 hover:bg-white/80 transition-all flex items-center gap-1.5"><i class="fa-solid fa-calendar-day"></i> اليومية</a>
-                    <a href="#notes" class="px-2 sm:px-3 py-1.5 rounded-lg text-sky-700 hover:bg-white/80 transition-all flex items-center gap-1.5"><i class="fa-solid fa-cloud"></i> السحابة</a>
-                </nav>
-
-                <!-- الحساب والبيانات الحالية والمغادرة -->
-                <div class="flex items-center gap-3 bg-white/90 px-3 py-1.5 rounded-2xl border border-sky-100/80">
-                    <div class="text-right">
-                        <span class="block text-xs font-black text-sky-900" id="userDisplayName">تحميل الحساب...</span>
-                        <span class="block text-[9px] text-slate-400" id="userDisplayType">حساب شخصي</span>
-                    </div>
-                    <button onclick="handleSignOut()" class="text-red-400 hover:text-red-600 transition-all p-1 text-sm" title="تسجيل الخروج">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                    </button>
-                </div>
-            </div>
-        </header>
-
-        <!-- المحتوى الرئيسي للموقع -->
-        <main class="max-w-7xl mx-auto px-4 mt-8 relative z-10">
-            
-            <!-- قسم 1: لوحة التحكم (التحفيز والترحاب) -->
-            <section id="dashboard" class="mb-10">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
-                    <!-- رسالة الترحيب الملهمة -->
-                    <div class="lg:col-span-2 cloud-card rounded-3xl p-6 md:p-8 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-white/90 to-sky-50/50">
-                        <div class="relative z-10">
-                            <span class="bg-sky-100 text-sky-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">شروق جديد 🌅</span>
-                            <h2 class="text-3xl md:text-4xl font-extrabold text-sky-900 mt-4 leading-tight">مرحباً بكِ في فضاء القيادة الذاتية!</h2>
-                            <p class="text-slate-600 mt-2 max-w-xl text-sm md:text-base leading-relaxed">
-                                تذكري دائماً: "النجاح لا يحدث مصادفة، بل هو انعكاس لخطواتكِ الصغيرة الموجهة نحو قيمكِ العليا وأهدافكِ الكبيرة في هذه السماء الواسعة."
-                            </p>
-                        </div>
-                        <div class="mt-6 p-4 rounded-2xl bg-sky-100/40 border border-sky-200/40 flex items-center gap-3">
-                            <div class="text-sky-500 text-xl"><i class="fa-solid fa-quote-right"></i></div>
-                            <p id="quoteText" class="text-xs md:text-sm text-sky-800 italic font-medium">خطوة واحدة في الاتجاه الصحيح تغنيكِ عن آلاف الخطوات العشوائية.</p>
-                        </div>
-                    </div>
-
-                    <!-- إحصائيات سريعة ومحفزة -->
-                    <div class="cloud-card rounded-3xl p-6 flex flex-col justify-between bg-gradient-to-br from-white/90 to-sky-50/50">
-                        <h3 class="font-bold text-sky-950 text-lg mb-4 flex items-center gap-2">
-                            <i class="fa-solid fa-chart-line text-sky-500"></i> مؤشرات طيرانكِ اليوم
-                        </h3>
-                        
-                        <div class="space-y-4 my-auto">
-                            <!-- التقدم اليومي للمهام -->
-                            <div>
-                                <div class="flex justify-between text-xs font-semibold mb-1 text-slate-600">
-                                    <span>إنجاز المهام اليومية</span>
-                                    <span id="dailyProgressText">0%</span>
-                                </div>
-                                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                                    <div id="dailyProgressBar" class="bg-gradient-to-l from-sky-400 to-sky-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-                                </div>
-                            </div>
-
-                            <!-- إنجاز الأهداف الاستراتيجية -->
-                            <div>
-                                <div class="flex justify-between text-xs font-semibold mb-1 text-slate-600">
-                                    <span>إجمالي تقدم الأهداف الفرعية</span>
-                                    <span id="subGoalsProgressText">0%</span>
-                                </div>
-                                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                                    <div id="subGoalsProgressBar" class="bg-gradient-to-l from-emerald-400 to-teal-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- إحصائيات سريعة في الأسفل -->
-                        <div class="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-sky-100">
-                            <div class="text-center p-2 rounded-xl bg-sky-50/50">
-                                <span class="block text-xl font-extrabold text-sky-600" id="completedTasksCount">0</span>
-                                <span class="text-[10px] text-slate-500 font-bold">مهام مكتملة</span>
-                            </div>
-                            <div class="text-center p-2 rounded-xl bg-sky-50/50">
-                                <span class="block text-xl font-extrabold text-sky-600" id="totalNotesCount">0</span>
-                                <span class="text-[10px] text-slate-500 font-bold">أفكار مـدونة</span>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </section>
-
-            <!-- قسم 2: ميثاق القيم الشخصية -->
-            <section id="values" class="mb-12">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <div>
-                        <h3 class="text-2xl font-black text-sky-900 flex items-center gap-2">
-                            <i class="fa-solid fa-star text-amber-400"></i> ميثاق قيمي الشخصية
-                        </h3>
-                        <p class="text-xs md:text-sm text-slate-500 mt-1">المبادئ الثابتة التي تسير طائرتكِ على أساسها وتحدد اتجاهاتكِ الصادقة.</p>
-                    </div>
-                    <button onclick="toggleValueModal(true)" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-xl shadow-md shadow-sky-200 transition-all flex items-center gap-2 text-sm">
-                        <i class="fa-solid fa-plus"></i> إضافة قيمة جديدة
-                    </button>
-                </div>
-
-                <!-- شبكة القيم -->
-                <div id="valuesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <!-- سيتم ملؤها بواسطة JS -->
-                </div>
-            </section>
-
-            <!-- قسم 3: التخطيط الاستراتيجي -->
-            <section id="strategy" class="mb-12 scroll-mt-24">
-                <div class="cloud-card rounded-3xl p-6 md:p-8 bg-gradient-to-br from-white/95 to-sky-50/40">
-                    <div class="border-b border-sky-100 pb-6 mb-6">
-                        <h3 class="text-2xl font-black text-sky-900 flex items-center gap-2">
-                            <i class="fa-solid fa-compass text-sky-500"></i> منارة القيادة الاستراتيجية
-                    </h3>
-                        <p class="text-xs md:text-sm text-slate-500 mt-1">حددي أفقكِ البعيد وقسّميه إلى مراحل صغيرة محكمة للوصول الآمن.</p>
-                    </div>
-
-                    <!-- الهدف الاستراتيجي الأكبر -->
-                    <div class="mb-8">
-                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-sky-50/80 p-5 rounded-2xl border border-sky-100">
-                            <div class="flex-1">
-                                <span class="text-xs font-extrabold text-sky-600 block mb-1"><i class="fa-solid fa-flag-checkered"></i> الهدف الاستراتيجي الأكبر (The Horizon)</span>
-                                <h4 id="strategicGoalText" class="text-xl font-bold text-sky-900">انقري على زر التعديل لكتابة هدفكِ الاستراتيجي الأكبر...</h4>
-                            </div>
-                            <button onclick="editStrategicGoal()" class="bg-white hover:bg-sky-50 text-sky-600 font-bold py-2 px-4 rounded-xl border border-sky-200 transition-all flex items-center gap-2 self-start md:self-center text-sm">
-                                <i class="fa-solid fa-pen-to-square"></i> تعديل الهدف الأكبر
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- الأهداف الفرعية (Milestones) -->
-                    <div>
-                        <div class="flex items-center justify-between mb-4">
-                            <h4 class="font-extrabold text-slate-700 text-base flex items-center gap-2">
-                                <i class="fa-solid fa-map-pin text-sky-500"></i> الأهداف الفرعية والمراحل المرحلية
-                            </h4>
-                            <button onclick="toggleSubGoalModal(true)" class="text-xs bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold py-1.5 px-3 rounded-lg transition-all flex items-center gap-1">
-                                <i class="fa-solid fa-plus"></i> إضافة هدف فرعي
-                            </button>
-                        </div>
-
-                        <!-- قائمة الأهداف الفرعية التفاعلية -->
-                        <div id="subGoalsList" class="space-y-4">
-                            <!-- سيتم تعبئتها ديناميكياً بواسطة JS -->
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- تقسيم لعمودين للـ (اليومية والملاحظات) للتصفح الأكثر تنظيماً وعصرية -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                
-                <!-- قسم 4: مخطط اليوم -->
-                <section id="planner" class="lg:col-span-7 scroll-mt-24">
-                    <div class="cloud-card rounded-3xl p-6 h-full flex flex-col justify-between bg-gradient-to-br from-white/95 to-sky-50/40">
-                        <div>
-                            <div class="flex items-center justify-between border-b border-sky-100 pb-4 mb-4">
-                                <div>
-                                    <h3 class="text-xl font-black text-sky-900 flex items-center gap-2">
-                                        <i class="fa-solid fa-calendar-day text-sky-500"></i> مخطط السحابة اليومي
-                                    </h3>
-                                    <p class="text-xs text-slate-500 mt-1">خططي ليومكِ وحققي أهدافكِ مهمة تلو الأخرى.</p>
-                                </div>
-                                <span class="text-xs font-bold px-2.5 py-1 bg-sky-100 text-sky-700 rounded-lg" id="currentDateDisplay">..</span>
-                            </div>
-
-                            <!-- إدخال مهمة جديدة -->
-                            <form id="todoForm" onsubmit="addTodoTask(event)" class="mb-4">
-                                <div class="flex gap-2">
-                                    <input type="text" id="todoInput" placeholder="اكتبِ مهمة جديدة لليوم هنا..." required
-                                           class="flex-1 bg-sky-50/60 border border-sky-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
-                                    <button type="submit" class="bg-sky-500 hover:bg-sky-600 text-white font-bold px-4 rounded-xl transition-all shadow-md shadow-sky-200">
-                                        <i class="fa-solid fa-plus"></i>
-                                    </button>
-                                </div>
-                            </form>
-
-                            <!-- قائمة المهام التفاعلية -->
-                            <div id="todoList" class="space-y-2 max-h-[350px] overflow-y-auto pr-1">
-                                <!-- سيتم تعبئتها بواسطة JS -->
-                            </div>
-                        </div>
-
-                        <!-- رسالة تحفيزية متغيرة لليومية -->
-                        <div class="mt-6 pt-4 border-t border-sky-100 flex items-center gap-3 text-xs text-sky-700/80 bg-sky-100/20 p-3 rounded-xl">
-                            <span class="text-lg"><i class="fa-regular fa-lightbulb"></i></span>
-                            <p>ابدئي بالمهام الأكثر أهمية وصعوبة صباحاً لضمان يوم حافل بالإنجاز والراحة.</p>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- قسم 5: سحابة الأفكار والملاحظات -->
-                <section id="notes" class="lg:col-span-5 scroll-mt-24">
-                    <div class="cloud-card rounded-3xl p-6 h-full flex flex-col justify-between bg-gradient-to-br from-white/95 to-sky-50/40">
-                        <div>
-                            <div class="flex items-center justify-between border-b border-sky-100 pb-4 mb-4">
-                                <div>
-                                    <h3 class="text-xl font-black text-sky-900 flex items-center gap-2">
-                                        <i class="fa-solid fa-cloud text-sky-500"></i> سحابة الأفكار والخواطر
-                                    </h3>
-                                    <p class="text-xs text-slate-500 mt-1">دوني أفكاركِ الطائرة قبل أن تتبخر!</p>
-                                </div>
-                                <button onclick="toggleNoteModal(true)" class="text-xs bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold py-1.5 px-3 rounded-lg transition-all flex items-center gap-1">
-                                    <i class="fa-solid fa-pen"></i> تدوين
-                                </button>
-                            </div>
-
-                            <!-- شبكة الملاحظات والأفكار المصغرة -->
-                            <div id="notesGrid" class="grid grid-cols-1 gap-3 max-h-[380px] overflow-y-auto pr-1">
-                                <!-- سيتم تعبئتها بواسطة JS -->
-                            </div>
-                        </div>
-                        
-                        <div class="text-[10px] text-center text-sky-600/60 mt-4">
-                            مزامنة سحابية نشطة ومحفوظة بحسابك الشخصي بسلام.
-                        </div>
-                    </div>
-                </section>
-
-            </div>
-
-            <!-- قسم 6: سجل الإنجازات والانتصارات -->
-            <section class="mt-12">
-                <div class="cloud-card rounded-3xl p-6 bg-gradient-to-r from-sky-400 to-sky-600 text-white relative overflow-hidden shadow-lg shadow-sky-200">
-                    <div class="absolute -right-10 -bottom-10 text-white/10 text-9xl pointer-events-none"><i class="fa-solid fa-trophy"></i></div>
-                    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <h3 class="text-xl font-extrabold mb-1 flex items-center gap-2"><i class="fa-solid fa-trophy text-yellow-300"></i> لوحة الانتصارات الشخصية</h3>
-                            <p class="text-xs md:text-sm text-sky-100">كل فكرة أو مهمة منجزة هي فوز حقيقي يبني مستقبلكِ المشرق.</p>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-2xl border border-white/10 text-center">
-                                <span class="block text-2xl font-black" id="victoryTotalCount">0</span>
-                                <span class="text-[10px] text-sky-100 font-bold">إجمالي المنجزات</span>
-                            </div>
-                            <button onclick="clearCompletedHistory()" class="bg-red-400/30 hover:bg-red-500/40 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition-all border border-white/10">
-                                أرشفة المهام القديمة
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-        </main>
-
-        <!-- فوتر بسيط وعصري -->
-        <footer class="mt-16 text-center text-xs text-sky-800/60 font-medium">
-            <p>LeadMe © 2026 - صُمم بكل حب ليقودكِ نحو سماء الإنجاز والإتقان 🌌</p>
-        </footer>
-    </div>
-
-    <!-- ==================== النوافذ المنبثقة التفاعلية (Modals) ==================== -->
-
-    <!-- 1. نافذة إضافة قيمة جديدة -->
-    <div id="valueModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
-            <button onclick="toggleValueModal(false)" class="absolute top-4 left-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
-            <h4 class="text-lg font-black text-sky-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-star text-amber-400"></i> إضافة قيمة جديدة للميثاق</h4>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">اسم القيمة</label>
-                    <input type="text" id="valueTitleInput" placeholder="مثل: الإتزان، التعلم المستمر، الأثر..." 
-                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">وصف موجز أو شعار القيمة</label>
-                    <textarea id="valueDescInput" placeholder="أكتبي عبارة تلخص معنى هذه القيمة لكِ..." rows="2"
-                              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all"></textarea>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">اختر أيقونة معبرة</label>
-                    <div class="grid grid-cols-5 gap-2" id="iconSelector">
-                        <button type="button" onclick="selectValueIcon('star')" class="value-icon-btn p-2 rounded-xl border border-sky-300 bg-sky-50 text-amber-400" data-icon="star"><i class="fa-solid fa-star"></i></button>
-                        <button type="button" onclick="selectValueIcon('heart')" class="value-icon-btn p-2 rounded-xl border border-slate-100 hover:bg-sky-50 text-red-400" data-icon="heart"><i class="fa-solid fa-heart"></i></button>
-                        <button type="button" onclick="selectValueIcon('book')" class="value-icon-btn p-2 rounded-xl border border-slate-100 hover:bg-sky-50 text-sky-500" data-icon="book"><i class="fa-solid fa-book-open"></i></button>
-                        <button type="button" onclick="selectValueIcon('lightbulb')" class="value-icon-btn p-2 rounded-xl border border-slate-100 hover:bg-sky-50 text-yellow-500" data-icon="lightbulb"><i class="fa-solid fa-lightbulb"></i></button>
-                        <button type="button" onclick="selectValueIcon('compass')" class="value-icon-btn p-2 rounded-xl border border-slate-100 hover:bg-sky-50 text-emerald-500" data-icon="compass"><i class="fa-solid fa-compass"></i></button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mt-6 flex gap-2">
-                <button onclick="saveValue()" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2.5 rounded-xl transition-all">حفظ القيمة</button>
-                <button onclick="toggleValueModal(false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all">إلغاء</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 2. نافذة إضافة هدف فرعي جديد -->
-    <div id="subGoalModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
-            <button onclick="toggleSubGoalModal(false)" class="absolute top-4 left-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
-            <h4 class="text-lg font-black text-sky-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-map-pin text-sky-500"></i> إضافة مرحلة / هدف فرعي</h4>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">الهدف الفرعي</label>
-                    <input type="text" id="subGoalTitleInput" placeholder="مثال: إنهاء قراءة كتاب قيادي، تطوير مهارة العرض..." 
-                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">الرغبة أو الهدف النهائي من هذا الإجراء</label>
-                    <input type="number" id="subGoalTargetInput" value="1" min="1"
-                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
-                </div>
-            </div>
-            
-            <div class="mt-6 flex gap-2">
-                <button onclick="saveSubGoal()" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2.5 rounded-xl transition-all">إضافة الهدف</button>
-                <button onclick="toggleSubGoalModal(false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all">إلغاء</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 3. نافذة إضافة ملاحظة / فكرة جديدة -->
-    <div id="noteModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
-            <button onclick="toggleNoteModal(false)" class="absolute top-4 left-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
-            <h4 class="text-lg font-black text-sky-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-cloud text-sky-500"></i> تدوين فكرة طائرة أو خاطرة</h4>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">عنوان الفكرة السريع</label>
-                    <input type="text" id="noteTitleInput" placeholder="أكتبي عنواناً ملخصاً للفكرة..." 
-                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">تفاصيل الفكرة</label>
-                    <textarea id="noteContentInput" placeholder="أطلقي العنان لخيالكِ ودوني التفاصيل هنا..." rows="4"
-                              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all"></textarea>
-                </div>
-            </div>
-            
-            <div class="mt-6 flex gap-2">
-                <button onclick="saveNote()" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2.5 rounded-xl transition-all">إرسال للسحابة</button>
-                <button onclick="toggleNoteModal(false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all">إلغاء</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 4. تعديل الهدف الاستراتيجي الأكبر -->
-    <div id="strategicGoalModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
-            <button onclick="toggleStrategicGoalModal(false)" class="absolute top-4 left-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
-            <h4 class="text-lg font-black text-sky-900 mb-4 flex items-center gap-2"><i class="fa-solid fa-flag-checkered text-sky-500"></i> تعديل هدف الأفق الاستراتيجي</h4>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">هدف الأفق الأكبر</label>
-                    <textarea id="strategicGoalInput" placeholder="أكتبي هدفكِ الاستراتيجي الأكبر الموجه لحياتكِ حالياً..." rows="3"
-                              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:bg-white transition-all"></textarea>
-                </div>
-            </div>
-            
-            <div class="mt-6 flex gap-2">
-                <button onclick="saveStrategicGoal()" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2.5 rounded-xl transition-all">تحديث الهدف</button>
-                <button onclick="toggleStrategicGoalModal(false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all">إلغاء</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== الجزء البرمجي الذكي وحفظ البيانات السحابية ==================== -->
-    <script type="module">
-        // استيراد حزم فايربيس السحابية
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // تهيئة البيئة والتحقق من المتغيرات العالمية الموفرة
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'leadme-sky-app';
-
-        // الحالة العامة للتطبيق
-        window.appState = {
-            strategicGoal: "تأسيس هوية مهنية قيادية ككاتبة ومطورة أعمال ذات أثر مستدام.",
-            values: [
-                { id: "1", title: "الأثر", desc: "أن أترك بصمة إيجابية في حياة كل شخص أقابله.", icon: "star" },
-                { id: "2", title: "الإتقان", desc: "بذل غاية الجهد لتقديم جودة تليق بتطلعاتي.", icon: "compass" },
-                { id: "3", title: "التعلم المستمر", desc: "الحياة سماء لا تتوقف عن التوسع، وأنا سحابة تمتص المعرفة.", icon: "book" }
-            ],
-            subGoals: [
-                { id: "1", title: "قراءة 5 كتب متخصصة في القيادة والتفكير الاستراتيجي", target: 5, current: 2 },
-                { id: "2", title: "أخذ دورة تدريبية احترافية في التخطيط وبناء المشاريع", target: 1, current: 1 }
-            ],
-            todos: [
-                { id: "1", title: "قراءة 20 صفحة من كتاب التفكير الإستراتيجي", completed: false },
-                { id: "2", title: "مراجعة ميزانية الأسبوع وتعديل خطة المشروع القادم", completed: true },
-                { id: "3", title: "كتابة خاطرة ملهمة في سحابة الأفكار اليومية", completed: false }
-            ],
-            notes: [
-                { id: "1", title: "فكرة مشروع تبادل كتب", content: "تأسيس منصة صغيرة لتبادل الكتب القيادية مجاناً بين المهتمين بالنمو الذاتي.", date: "١٨ مايو ٢٠٢٦" }
-            ],
-            selectedIcon: 'star'
+        return { 
+          ...r, 
+          completedToday: isCompleted,
+          streak: newStreak,
+          lastCompletedDate: isCompleted ? todayStr : r.lastCompletedDate
         };
+      }
+      return r;
+    });
+    setRoutines(updated);
+    saveDataToCloud({ routines: updated });
+  };
 
-        let currentAuthMode = 'login'; // 'login' or 'register'
-        let currentUser = null;
-        let unsubscribeFirestore = null;
+  const deleteRoutine = (routineId) => {
+    const updated = routines.filter(r => r.id !== routineId);
+    setRoutines(updated);
+    saveDataToCloud({ routines: updated });
+  };
 
-        // الاقتباسات التحفيزية للسماء
-        const skyQuotes = [
-            "خطوة واحدة في الاتجاه الصحيح تغنيكِ عن آلاف الخطوات العشوائية.",
-            "ليست السحب هي التي تتحرك بل شغفكِ هو الذي يحركِ الأرض تحت قدميكِ.",
-            "حددي أفقكِ كالسماء، لا حدود لطموحاتكِ ولا قيود لمدى رغبتكِ.",
-            "التميز لا يحتاج لمعجزات، بل لتراكم الخطوات اليومية الصغيرة بحب وإتقان.",
-            "المرونة مع التفاصيل والصرامة مع الأهداف، سر طيران القياديين الناجحين."
-        ];
+  const resetRoutinesDaily = () => {
+    const updated = routines.map(r => ({ ...r, completedToday: false }));
+    setRoutines(updated);
+    saveDataToCloud({ routines: updated });
+  };
 
-        // مظهر التنبيهات الذكي بدلاً من Alert
-        window.showToast = function(message, isError = false) {
-            const toast = document.getElementById('toastNotification');
-            const msgEl = document.getElementById('toastMessage');
-            const iconEl = document.getElementById('toastIcon');
-            
-            msgEl.textContent = message;
-            if (isError) {
-                toast.classList.remove('bg-slate-900');
-                toast.classList.add('bg-red-600');
-                iconEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-white"></i>';
-            } else {
-                toast.classList.remove('bg-red-600');
-                toast.classList.add('bg-slate-900');
-                iconEl.innerHTML = '<i class="fa-solid fa-cloud text-sky-400"></i>';
-            }
-            
-            toast.classList.remove('-translate-x-full');
-            setTimeout(() => {
-                toast.classList.add('-translate-x-full');
-            }, 4000);
-        }
+  // 3. جيل التحفيز الذكي عبر Gemini API
+  const generateMotivationBoost = async () => {
+    setGeneratingMotivation(true);
+    setMotivationError('');
+    setAiMotivation('');
 
-        // تبديل أوضاع تسجيل الدخول وإنشاء حساب جديد
-        window.switchAuthTab = function(mode) {
-            currentAuthMode = mode;
-            const tabLogin = document.getElementById('tabLogin');
-            const tabRegister = document.getElementById('tabRegister');
-            const submitBtnText = document.querySelector('#authSubmitBtn span');
+    // تجميع تفاصيل الأهداف لإرسالها للذكاء الاصطناعي
+    const subGoalsText = subGoals.filter(g => g.trim()).join(', ');
+    const userPrompt = `
+      بصفتك مدرب حياة ومحفز شخصي ملهم وبليغ جداً، قم بصياغة رسالة تحفيزية مخصصة لي باللغة العربية الفصحى.
+      إليك تفاصيل أهدافي الحالية:
+      - رؤيتي في الحياة: ${vision || 'لم تحدد بعد'}
+      - قيمي الأساسية: ${values || 'لم تحدد بعد'}
+      - هدفي الاستراتيجي الأكبر: ${strategicGoal || 'لم يحدد بعد'}
+      - أهدافي الفرعية الحالية: ${subGoalsText || 'لم تحدد بعد'}
+      - المهام المتبقية لليوم: ${tasks.filter(t => !t.completed).map(t => t.text).join('، ') || 'كل المهام منجزة أو لا توجد مهام حالياً!'}
 
-            if (mode === 'login') {
-                tabLogin.className = "flex-1 py-2 rounded-lg bg-white text-sky-800 shadow-sm transition-all";
-                tabRegister.className = "flex-1 py-2 rounded-lg text-sky-600 hover:text-sky-800 transition-all";
-                submitBtnText.textContent = "تسجيل الدخول والتحليق";
-            } else {
-                tabRegister.className = "flex-1 py-2 rounded-lg bg-white text-sky-800 shadow-sm transition-all";
-                tabLogin.className = "flex-1 py-2 rounded-lg text-sky-600 hover:text-sky-800 transition-all";
-                submitBtnText.textContent = "إنشاء حسابك والانطلاق";
-            }
-        }
+      اكتب لي جرعة تفاؤل وتركيز سريعة تلهمني للمثابرة وبث الطاقة والهمة العالية في روحي، مع ربطها برؤيتي وأهدافي بشكل ذكي ومؤثر. اجعلها رشيقة وقوية ومكثفة (حوالي 3-4 أسطر غنية).
+    `;
 
-        // تنفيذ عملية تسجيل الدخول أو إنشاء الحساب
-        window.handleAuthSubmit = async function(event) {
-            event.preventDefault();
-            const email = document.getElementById('authEmail').value.trim();
-            const password = document.getElementById('authPassword').value;
+    const systemPrompt = "أنت رفيق النجاح والمدرب الشخصي الملهم لتطبيق LeadMe. كلامك يبعث الأمل والإرادة والنشاط بلغة عربية فخمة وراقية كالسحاب والسموات الفسيحة.";
 
-            if (!email || !password) {
-                showToast("الرجاء ملء جميع الحقول المطلوبة", true);
-                return;
-            }
+    const apiKey = ""; // المفتاح يؤخذ تلقائياً من بيئة التشغيل
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
-            try {
-                if (currentAuthMode === 'login') {
-                    showToast("جاري التحقق من الهوية السحابية...");
-                    await signInWithEmailAndPassword(auth, email, password);
-                } else {
-                    showToast("جاري إنشاء فضاء قيادي جديد...");
-                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                    
-                    // تحضير وحفظ نموذج أولي جديد سحابياً للمستخدم فوراً
-                    const defaultRef = doc(db, 'artifacts', appId, 'users', userCredential.user.uid, 'state', 'current');
-                    await setDoc(defaultRef, window.appState);
-                }
-            } catch (error) {
-                let errorMsg = "حدث خطأ أثناء الاتصال السحابي";
-                if (error.code === 'auth/user-not-found') errorMsg = "الحساب غير مسجل أو غير موجود";
-                else if (error.code === 'auth/wrong-password') errorMsg = "كلمة المرور غير صحيحة";
-                else if (error.code === 'auth/email-already-in-use') errorMsg = "البريد الإلكتروني مستخدم بالفعل";
-                showToast(errorMsg, true);
-            }
-        }
-
-        // الدخول كضيف (حساب مجهول مؤقت)
-        window.loginAsGuest = async function() {
-            try {
-                showToast("جاري إعداد فضاء زائر مجهول...");
-                await signInAnonymously(auth);
-            } catch (error) {
-                showToast("تعذر الدخول كضيف، يرجى المحاولة لاحقاً", true);
-            }
-        }
-
-        // مغادرة النظام السحابي
-        window.handleSignOut = async function() {
-            try {
-                if (unsubscribeFirestore) unsubscribeFirestore();
-                await signOut(auth);
-                showToast("هبطت بسلام! ننتظر تحليقك القادم.");
-            } catch (error) {
-                showToast("حدث خطأ أثناء المغادرة", true);
-            }
-        }
-
-        // دالة المزامنة والحفظ السحابي التلقائي
-        async function syncStateToCloud() {
-            if (!currentUser) return;
-            try {
-                const userRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'state', 'current');
-                await setDoc(userRef, {
-                    strategicGoal: window.appState.strategicGoal,
-                    values: window.appState.values,
-                    subGoals: window.appState.subGoals,
-                    todos: window.appState.todos,
-                    notes: window.appState.notes
-                });
-            } catch (error) {
-                showToast("عفواً، تعذرت مزامنة التغييرات تلقائياً", true);
-            }
-        }
-
-        // استمع لتغيرات الحسابات السحابية (Authentication Tracker)
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            const authContainer = document.getElementById('authContainer');
-            const mainDashboard = document.getElementById('mainDashboard');
-
-            if (user) {
-                // تصفير وعرض واجهة المستخدم
-                authContainer.classList.add('hidden');
-                mainDashboard.classList.remove('hidden');
-
-                // تحديث واجهة الهيدر
-                document.getElementById('userDisplayName').textContent = user.email ? user.email : `ضيف (${user.uid.substring(0,6)})`;
-                document.getElementById('userDisplayType').textContent = user.isAnonymous ? "حساب مؤقت كضيف" : "حساب سحابي موثق";
-
-                showToast("تم الاتصال السحابي بنجاح! هبوط مستقر");
-
-                // تفعيل المراقبة الحية للبيانات من Firestore
-                const userRef = doc(db, 'artifacts', appId, 'users', user.uid, 'state', 'current');
-                
-                unsubscribeFirestore = onSnapshot(userRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const cloudData = docSnap.data();
-                        window.appState.strategicGoal = cloudData.strategicGoal || "";
-                        window.appState.values = cloudData.values || [];
-                        window.appState.subGoals = cloudData.subGoals || [];
-                        window.appState.todos = cloudData.todos || [];
-                        window.appState.notes = cloudData.notes || [];
-                        updateUI();
-                    } else {
-                        // في حال عدم وجود ملف سحابي مسبق، يتم إعداد ملف جديد فوراً
-                        syncStateToCloud();
-                    }
-                }, (error) => {
-                    showToast("خطأ أثناء الاتصال الحي بالبيانات", true);
-                });
-
-            } else {
-                // إظهار واجهة تسجيل الدخول وإخفاء لوحة التحكم
-                authContainer.classList.remove('hidden');
-                mainDashboard.classList.add('hidden');
-            }
+    let delay = 1000;
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userPrompt }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] }
+          })
         });
 
-        // تشغيل عملية المصادقة الأولية والتلقائية عند انطلاق التطبيق
-        const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                // نترك الاختيار للمستخدم لتسجيل الدخول بدلاً من الدخول مجهولاً فوراً
-            }
-        };
-        initAuth();
+        if (!response.ok) throw new Error(`HTTP status ${response.status}`);
+        
+        const result = await response.json();
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          setAiMotivation(text.trim());
+          setGeneratingMotivation(false);
+          return;
+        } else {
+          throw new Error("استجابة فارغة من النموذج");
+        }
+      } catch (error) {
+        if (attempt === 5) {
+          setMotivationError("عذراً، لم نتمكن من الاتصال بالمدرب الذكي حالياً. يرجى المحاولة لاحقاً!");
+          setGeneratingMotivation(false);
+        } else {
+          await new Promise(res => setTimeout(res, delay));
+          delay *= 2;
+        }
+      }
+    }
+  };
 
-        // ==================== تفاعلات واجهة المستخدم المبرمجة للمنصة ====================
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-sky-50 flex flex-col items-center justify-center text-sky-900 font-sans">
+        <div className="relative flex items-center justify-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-sky-500"></div>
+          <span className="absolute text-2xl">☁️</span>
+        </div>
+        <p className="mt-4 text-lg font-medium animate-pulse">جاري تحضير سمائك الخاصة في LeadMe...</p>
+      </div>
+    );
+  }
 
-        function updateUI() {
-            // 1. التاريخ اليومي
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('currentDateDisplay').textContent = new Date().toLocaleDateString('ar-EG', options);
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-sky-400 via-sky-200 to-sky-50 font-sans text-slate-800 antialiased selection:bg-sky-200" dir="rtl">
+      
+      {/* خلفية غيوم جمالية علوية */}
+      <div className="absolute top-0 left-0 right-0 h-48 bg-opacity-10 bg-white overflow-hidden pointer-events-none">
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-white rounded-full opacity-40 blur-xl"></div>
+        <div className="absolute top-10 right-10 w-64 h-32 bg-white rounded-full opacity-30 blur-2xl"></div>
+        <div className="absolute top-24 left-1/3 w-48 h-20 bg-white rounded-full opacity-20 blur-xl animate-pulse"></div>
+      </div>
 
-            // 2. تحديث شاشة الاقتباسات بشكل عشوائي خفيف
-            const randIndex = Math.floor(Math.random() * skyQuotes.length);
-            document.getElementById('quoteText').textContent = skyQuotes[randIndex];
+      <header className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-sky-100/50 pb-6 gap-4">
+          
+          {/* الشعار والاسم */}
+          <div className="flex items-center space-x-3 space-x-reverse">
+            <div className="bg-white/80 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-sky-100/40">
+              <svg className="w-8 h-8 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-md">
+                LeadMe <span className="text-sky-100 font-normal text-lg block sm:inline sm:mr-2">| قُد حياتك نحو القمة</span>
+              </h1>
+              <p className="text-sky-900 text-xs font-medium">سماؤك المنظمة لتحقيق رؤيتك وأهدافك اليومية</p>
+            </div>
+          </div>
 
-            // 3. تحديث الهدف الاستراتيجي
-            document.getElementById('strategicGoalText').textContent = window.appState.strategicGoal || "اضغطي على الزر لوضع هدفكِ الاستراتيجي الأكبر لتوجيه مساركِ.";
+          {/* حالة الحفظ والمعرف الشخصي */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl text-xs font-semibold text-sky-900 shadow-md border border-sky-200/50 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span>معرف الحساب:</span>
+              <span className="font-mono bg-sky-100/50 px-2 py-0.5 rounded text-[10px] text-sky-700 max-w-[120px] truncate" title={user?.uid}>
+                {user?.uid}
+              </span>
+            </div>
 
-            // 4. تحديث قائمة القيم الشخصية
-            const valuesGrid = document.getElementById('valuesGrid');
-            valuesGrid.innerHTML = '';
-            window.appState.values.forEach(val => {
-                let iconHTML = '';
-                if(val.icon === 'star') iconHTML = '<i class="fa-solid fa-star text-amber-400"></i>';
-                else if(val.icon === 'heart') iconHTML = '<i class="fa-solid fa-heart text-red-400"></i>';
-                else if(val.icon === 'book') iconHTML = '<i class="fa-solid fa-book-open text-sky-500"></i>';
-                else if(val.icon === 'lightbulb') iconHTML = '<i class="fa-solid fa-lightbulb text-yellow-500"></i>';
-                else iconHTML = '<i class="fa-solid fa-compass text-emerald-500"></i>';
+            <div className="bg-white/90 backdrop-blur-md px-3 py-2 rounded-xl text-xs font-semibold text-sky-900 shadow-md border border-sky-200/50 flex items-center gap-1.5">
+              {saving ? (
+                <>
+                  <span className="animate-spin text-sky-600">⌛</span>
+                  <span>جاري الحفظ تلقائياً...</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-emerald-500">✓</span>
+                  <span>تم حفظ جميع التغييرات سحابياً</span>
+                </>
+              )}
+            </div>
+          </div>
 
-                valuesGrid.innerHTML += `
-                    <div class="cloud-card rounded-2xl p-5 border border-sky-100 flex items-start gap-4">
-                        <div class="text-2xl">${iconHTML}</div>
-                        <div class="flex-1">
-                            <h5 class="font-bold text-sky-900 mb-1 text-base flex items-center justify-between">
-                                ${val.title}
-                                <button onclick="deleteValue('${val.id}')" class="text-[10px] text-red-300 hover:text-red-500 transition-all"><i class="fa-solid fa-trash"></i></button>
-                            </h5>
-                            <p class="text-xs text-slate-500 leading-relaxed">${val.desc}</p>
-                        </div>
+        </div>
+      </header>
+
+      <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* قسم 1: الدافع والتحفيز الذكي (AI Coach) */}
+        <section className="mb-8">
+          <div className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden border border-sky-500/30">
+            {/* تأثير غيمة خفيفة */}
+            <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-12 translate-y-12 scale-150">
+              <svg className="w-72 h-72 fill-current" viewBox="0 0 100 100">
+                <path d="M20,60 C20,50 30,40 45,40 C50,30 70,30 80,45 C90,45 95,55 90,65 C90,75 80,80 70,80 L25,80 C15,80 15,70 20,60 Z" />
+              </svg>
+            </div>
+
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="space-y-2 max-w-2xl">
+                <span className="bg-sky-500/30 text-sky-100 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                  مدربك الشخصي الذكي ☁️
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold">هل تحتاج إلى جرعة من الإلهام والتركيز الآن؟</h2>
+                <p className="text-sky-100 text-sm sm:text-base">
+                  سيقوم الذكاء الاصطناعي بقراءة أهدافك الاستراتيجية ورؤيتك وصياغة رسالة تحفيزية مشخصة كلياً لرفع شغفك وهمتك في ثوانٍ معدودة.
+                </p>
+              </div>
+              <button
+                onClick={generateMotivationBoost}
+                disabled={generatingMotivation}
+                className="w-full md:w-auto bg-white text-sky-700 hover:bg-sky-50 active:scale-95 transition-all px-6 py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 text-base shrink-0 border border-transparent hover:border-sky-200"
+              >
+                {generatingMotivation ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-sky-600" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span>جاري صياغة جرعتك الملهمة...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>✨ احصل على جرعة تحفيز</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* صندوق استعراض التحفيز */}
+            {(aiMotivation || motivationError) && (
+              <div className="mt-6 bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 text-white animate-fade-in transition-all">
+                {motivationError ? (
+                  <p className="text-rose-100 text-sm font-medium flex items-center gap-2">
+                    ⚠️ {motivationError}
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-sky-200 font-bold flex items-center gap-1">
+                        <span>💬</span> نصيحة سحابة النجاح المخصصة لك:
+                      </span>
+                      <button 
+                        onClick={() => {
+                          const textToCopy = `LeadMe Motivation: ${aiMotivation}`;
+                          // استخدام طريقة الكليب بورد المتوافقة مع الـ iFrames
+                          const textArea = document.createElement("textarea");
+                          textArea.value = textToCopy;
+                          document.body.appendChild(textArea);
+                          textArea.select();
+                          document.execCommand('copy');
+                          document.body.removeChild(textArea);
+                        }}
+                        className="text-[11px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition text-sky-100 hover:text-white"
+                        title="نسخ الرسالة"
+                      >
+                        نسخ الرسالة 📋
+                      </button>
                     </div>
-                `;
-            });
+                    <p className="text-base sm:text-lg italic leading-relaxed font-medium text-sky-50">
+                      " {aiMotivation} "
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
 
-            // 5. تحديث الأهداف الفرعية (Milestones)
-            const subGoalsList = document.getElementById('subGoalsList');
-            subGoalsList.innerHTML = '';
-            let totalSubGoalsProgSum = 0;
-            window.appState.subGoals.forEach(goal => {
-                const percentage = Math.round((goal.current / goal.target) * 100);
-                totalSubGoalsProgSum += percentage;
+        {/* قسم 2: الرؤية، القيم والهدف الاستراتيجي */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+          
+          {/* كارت الرؤية والقيم */}
+          <div className="lg:col-span-1 flex flex-col gap-6">
+            
+            {/* الرؤية */}
+            <div className="bg-white/80 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-sky-100 flex-1 flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-3xl">👁️‍🗨️</span>
+                <div>
+                  <h3 className="text-lg font-bold text-sky-950">رؤيتي للمستقبل</h3>
+                  <p className="text-xs text-sky-600">أين أرى نفسي على المدى البعيد؟</p>
+                </div>
+              </div>
+              <textarea
+                value={vision}
+                onChange={(e) => updateVision(e.target.value)}
+                placeholder="اكتب هنا رؤيتك الملهمة لحياتك ومستقبلك..."
+                className="w-full flex-1 min-h-[120px] bg-sky-50/50 hover:bg-sky-50 focus:bg-white border border-sky-100 hover:border-sky-300 focus:border-sky-500 rounded-2xl p-4 text-sm text-slate-700 placeholder-slate-400 focus:ring-4 focus:ring-sky-100 transition-all outline-none resize-none"
+              />
+            </div>
 
-                subGoalsList.innerHTML += `
-                    <div class="bg-white/80 p-4 rounded-2xl border border-sky-100/50 hover:border-sky-200 transition-all flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div class="flex-1 w-full">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-sm font-bold text-sky-900">${goal.title}</span>
-                                <span class="text-xs font-semibold text-slate-500">${goal.current} من أصل ${goal.target} (${percentage}%)</span>
-                            </div>
-                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                <div class="bg-gradient-to-l from-sky-400 to-sky-600 h-full rounded-full" style="width: ${percentage}%"></div>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 self-end md:self-center">
-                            <button onclick="updateSubGoalProgress('${goal.id}', -1)" class="w-8 h-8 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-600 flex items-center justify-center font-bold text-sm transition-all"><i class="fa-solid fa-minus"></i></button>
-                            <button onclick="updateSubGoalProgress('${goal.id}', 1)" class="w-8 h-8 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-600 flex items-center justify-center font-bold text-sm transition-all"><i class="fa-solid fa-plus"></i></button>
-                            <button onclick="deleteSubGoal('${goal.id}')" class="text-xs text-red-300 hover:text-red-500 transition-all p-2"><i class="fa-solid fa-trash"></i></button>
-                        </div>
+            {/* القيم */}
+            <div className="bg-white/80 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-sky-100 flex-1 flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-3xl">💎</span>
+                <div>
+                  <h3 className="text-lg font-bold text-sky-950">قيمي ومبادئي</h3>
+                  <p className="text-xs text-sky-600">الركائز التي تحكم قراراتي واتجاهاتي</p>
+                </div>
+              </div>
+              <textarea
+                value={values}
+                onChange={(e) => updateValues(e.target.value)}
+                placeholder="مثال: الصدق، الاستمرارية، التعلم الذاتي، العطاء..."
+                className="w-full flex-1 min-h-[120px] bg-sky-50/50 hover:bg-sky-50 focus:bg-white border border-sky-100 hover:border-sky-300 focus:border-sky-500 rounded-2xl p-4 text-sm text-slate-700 placeholder-slate-400 focus:ring-4 focus:ring-sky-100 transition-all outline-none resize-none"
+              />
+            </div>
+
+          </div>
+
+          {/* كارت الهدف الاستراتيجي والأهداف الفرعية */}
+          <div className="lg:col-span-2 bg-white/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-xl border border-sky-100 flex flex-col">
+            <div className="flex items-center justify-between mb-6 border-b border-sky-100/50 pb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🎯</span>
+                <div>
+                  <h3 className="text-xl font-bold text-sky-950">البوصلة الاستراتيجية</h3>
+                  <p className="text-xs text-sky-600">هدف الارتكاز الكبير والخطوات الموصّلة إليه</p>
+                </div>
+              </div>
+            </div>
+
+            {/* الهدف الاستراتيجي الأكبر */}
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-sky-950 mb-2">
+                🌟 الهدف الاستراتيجي العام:
+              </label>
+              <input
+                type="text"
+                value={strategicGoal}
+                onChange={(e) => updateStrategicGoal(e.target.value)}
+                placeholder="ما هو الهدف الأكبر الذي تسعى لتتويجه في هذه المرحلة؟"
+                className="w-full bg-sky-50/50 hover:bg-sky-50 focus:bg-white border border-sky-100 hover:border-sky-300 focus:border-sky-500 rounded-2xl px-4 py-3 text-sm font-semibold text-sky-900 placeholder-slate-400 focus:ring-4 focus:ring-sky-100 transition-all outline-none"
+              />
+            </div>
+
+            {/* الأهداف الفرعية الموصّلة */}
+            <div className="flex-1 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-bold text-sky-950">
+                  ⛓️ الأهداف الفرعية والمحطات:
+                </label>
+                <button
+                  onClick={addSubGoal}
+                  className="text-xs bg-sky-100 text-sky-700 hover:bg-sky-200 px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1"
+                >
+                  <span>+</span> إضافة هدف فرعي
+                </button>
+              </div>
+
+              <div className="space-y-3 flex-1 overflow-y-auto max-h-[250px] pr-1">
+                {subGoals.map((subGoal, index) => (
+                  <div key={index} className="flex items-center gap-2 group animate-fade-in">
+                    <span className="text-sky-400 font-bold text-sm bg-sky-50 px-2.5 py-1.5 rounded-lg border border-sky-100">
+                      {index + 1}
+                    </span>
+                    <input
+                      type="text"
+                      value={subGoal}
+                      onChange={(e) => handleSubGoalChange(index, e.target.value)}
+                      placeholder={`الهدف الفرعي رقم ${index + 1}...`}
+                      className="flex-1 bg-white hover:bg-sky-50/30 focus:bg-white border border-sky-100 hover:border-sky-200 focus:border-sky-500 rounded-xl px-4 py-2 text-sm text-slate-700 placeholder-slate-400 focus:ring-4 focus:ring-sky-100 transition-all outline-none"
+                    />
+                    <button
+                      onClick={() => removeSubGoal(index)}
+                      className="text-slate-400 hover:text-rose-500 p-2 rounded-lg hover:bg-rose-50 transition-all"
+                      title="حذف الهدف"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* قسم 3: المهام اليومية والروتين */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          
+          {/* صندوق المهام اليومية */}
+          <div className="bg-white/85 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-xl border border-sky-100 flex flex-col">
+            <div className="flex items-center justify-between mb-4 border-b border-sky-100/50 pb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">📅</span>
+                <div>
+                  <h3 className="text-lg font-bold text-sky-950">مهامي اليومية</h3>
+                  <p className="text-xs text-sky-600">الأولويات والمهمات العاجلة لليوم</p>
+                </div>
+              </div>
+              {tasks.some(t => t.completed) && (
+                <button
+                  onClick={clearCompletedTasks}
+                  className="text-xs text-slate-500 hover:text-rose-500 font-bold transition-all"
+                >
+                  تنظيف المكتمل 🧹
+                </button>
+              )}
+            </div>
+
+            {/* إدخال مهمة جديدة */}
+            <form onSubmit={addTask} className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={newTaskText}
+                onChange={(e) => setNewTaskText(e.target.value)}
+                placeholder="أضف مهمة جديدة واضغط إدخال..."
+                className="flex-1 bg-sky-50/50 hover:bg-sky-50 focus:bg-white border border-sky-100 hover:border-sky-300 focus:border-sky-500 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:ring-4 focus:ring-sky-100 transition-all outline-none"
+              />
+              <button
+                type="submit"
+                className="bg-sky-600 hover:bg-sky-700 active:scale-95 text-white px-5 rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center"
+              >
+                إضافة
+              </button>
+            </form>
+
+            {/* قائمة المهام */}
+            <div className="flex-1 overflow-y-auto max-h-[300px] pr-1 space-y-2">
+              {tasks.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  <span className="block text-2xl mb-2">🎈</span>
+                  لا توجد مهام مضافة لليوم. ابدأ بالتخطيط!
+                </div>
+              ) : (
+                tasks.map(task => (
+                  <div
+                    key={task.id}
+                    className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
+                      task.completed
+                        ? 'bg-slate-50 border-slate-100 text-slate-400'
+                        : 'bg-white border-sky-100 hover:border-sky-200 hover:shadow-sm text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleTask(task.id)}>
+                      <span className={`text-xl select-none ${task.completed ? 'text-sky-500' : 'text-slate-300'}`}>
+                        {task.completed ? '⬜✔️' : '⬜'}
+                      </span>
+                      <span className={`text-sm ${task.completed ? 'line-through decoration-slate-300' : 'font-medium'}`}>
+                        {task.text}
+                      </span>
                     </div>
-                `;
-            });
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="text-slate-300 hover:text-rose-500 transition-all p-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
-            // حساب النسبة الكلية للأهداف الفرعية
-            const subGoalsAvgProg = window.appState.subGoals.length > 0 ? Math.round(totalSubGoalsProgSum / window.appState.subGoals.length) : 0;
-            document.getElementById('subGoalsProgressText').textContent = `${subGoalsAvgProg}%`;
-            document.getElementById('subGoalsProgressBar').style.width = `${subGoalsAvgProg}%`;
+          {/* صندوق عادات وروتين اليوم */}
+          <div className="bg-white/85 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-xl border border-sky-100 flex flex-col">
+            <div className="flex items-center justify-between mb-4 border-b border-sky-100/50 pb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🔄</span>
+                <div>
+                  <h3 className="text-lg font-bold text-sky-950">العادات والروتين اليومي</h3>
+                  <p className="text-xs text-sky-600">الاستمرارية تبني الجبال</p>
+                </div>
+              </div>
+              {routines.length > 0 && (
+                <button
+                  onClick={resetRoutinesDaily}
+                  className="text-xs text-slate-500 hover:text-sky-600 font-bold transition-all"
+                  title="إعادة تصفير الروتين لليوم الجديد"
+                >
+                  إعادة تهيئة اليوم 🔄
+                </button>
+              )}
+            </div>
 
-            // 6. تحديث قائمة المهام اليومية (Todos)
-            const todoList = document.getElementById('todoList');
-            todoList.innerHTML = '';
-            let completedCount = 0;
-            window.appState.todos.forEach(todo => {
-                if (todo.completed) completedCount++;
+            {/* إضافة روتين جديد */}
+            <form onSubmit={addRoutine} className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={newRoutineText}
+                onChange={(e) => setNewRoutineText(e.target.value)}
+                placeholder="مثال: قراءة 15 صفحة، الرياضة الصباحية..."
+                className="flex-1 bg-sky-50/50 hover:bg-sky-50 focus:bg-white border border-sky-100 hover:border-sky-300 focus:border-sky-500 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:ring-4 focus:ring-sky-100 transition-all outline-none"
+              />
+              <button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white px-5 rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center"
+              >
+                إضافة
+              </button>
+            </form>
 
-                todoList.innerHTML += `
-                    <div class="flex items-center justify-between p-3 rounded-xl hover:bg-sky-50/50 transition-all border-b border-sky-100/30 ${todo.completed ? 'opacity-60 bg-sky-50/20' : ''}">
-                        <div class="flex items-center gap-3">
-                            <button onclick="toggleTodoState('${todo.id}')" class="w-5 h-5 rounded-md border flex items-center justify-center transition-all ${todo.completed ? 'bg-sky-500 border-sky-500 text-white' : 'border-sky-300 hover:border-sky-500'}">
-                                ${todo.completed ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
-                            </button>
-                            <span class="text-sm ${todo.completed ? 'line-through text-slate-400 font-medium' : 'text-slate-700 font-semibold'}">${todo.title}</span>
+            {/* قائمة العادات والروتين */}
+            <div className="flex-1 overflow-y-auto max-h-[300px] pr-1 space-y-2">
+              {routines.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  <span className="block text-2xl mb-2">🌱</span>
+                  ابنِ عادات جديدة ورسّخ روتينك اليومي هنا.
+                </div>
+              ) : (
+                routines.map(routine => (
+                  <div
+                    key={routine.id}
+                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                      routine.completedToday
+                        ? 'bg-emerald-50/40 border-emerald-100 text-slate-500'
+                        : 'bg-white border-sky-100 hover:border-sky-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleRoutine(routine.id)}>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                        routine.completedToday ? 'bg-emerald-500 text-white' : 'border-2 border-slate-200 text-transparent'
+                      }`}>
+                        ✓
+                      </div>
+                      <div>
+                        <span className={`text-sm font-medium ${routine.completedToday ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                          {routine.text}
+                        </span>
+                        {/* عداد الأيام المتتالية */}
+                        <div className="flex items-center gap-1 mt-0.5 text-xs text-amber-600 font-bold">
+                          <span>🔥</span>
+                          <span>{routine.streak || 0} أيام متتالية</span>
                         </div>
-                        <button onclick="deleteTodo('${todo.id}')" class="text-slate-300 hover:text-red-500 transition-all"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                      </div>
                     </div>
-                `;
-            });
+                    <button
+                      onClick={() => deleteRoutine(routine.id)}
+                      className="text-slate-300 hover:text-rose-500 transition-all p-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
-            // حساب النسبة الكلية لليومية
-            const todoPercentage = window.appState.todos.length > 0 ? Math.round((completedCount / window.appState.todos.length) * 100) : 0;
-            document.getElementById('dailyProgressText').textContent = `${todoPercentage}%`;
-            document.getElementById('dailyProgressBar').style.width = `${todoPercentage}%`;
+        </section>
 
-            // 7. تحديث إحصائيات لوحة التحكم وسجل الفوز
-            document.getElementById('completedTasksCount').textContent = completedCount;
-            document.getElementById('totalNotesCount').textContent = window.appState.notes.length;
-            document.getElementById('victoryTotalCount').textContent = completedCount + window.appState.subGoals.filter(g => g.current >= g.target).length;
+        {/* قسم 4: مساحة الملاحظات والخواطر السريعة */}
+        <section className="mb-12">
+          <div className="bg-white/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-xl border border-sky-100">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-3xl">📝</span>
+              <div>
+                <h3 className="text-lg font-bold text-sky-950">مساحة الخواطر والملاحظات</h3>
+                <p className="text-xs text-sky-600">اكتب هنا أفكاراً تطرأ عليك فجأة أو مسودات سريعة لليوم</p>
+              </div>
+            </div>
+            <textarea
+              value={notes}
+              onChange={(e) => updateNotes(e.target.value)}
+              placeholder="اكتب أفكارك الإبداعية، تخطيطك السريع، أو ما يدور بذهنك الآن..."
+              className="w-full min-h-[160px] bg-sky-50/30 hover:bg-sky-50/60 focus:bg-white border border-sky-100 hover:border-sky-300 focus:border-sky-500 rounded-2xl p-4 text-sm text-slate-700 placeholder-slate-400 focus:ring-4 focus:ring-sky-100 transition-all outline-none"
+            />
+          </div>
+        </section>
 
-            // 8. تحديث سحابة الأفكار والخواطر
-            const notesGrid = document.getElementById('notesGrid');
-            notesGrid.innerHTML = '';
-            window.appState.notes.forEach(note => {
-                notesGrid.innerHTML += `
-                    <div class="p-4 bg-sky-50/70 border border-sky-100/50 rounded-2xl relative group animate-fade-in">
-                        <button onclick="deleteNote('${note.id}')" class="absolute top-3 left-3 text-xs text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><i class="fa-solid fa-trash"></i></button>
-                        <span class="text-[10px] text-sky-600 font-bold block mb-1">${note.date}</span>
-                        <h5 class="font-bold text-sky-950 text-sm mb-1">${note.title}</h5>
-                        <p class="text-xs text-slate-600 leading-relaxed">${note.content}</p>
-                    </div>
-                `;
-            });
-        }
+      </main>
 
-        // إتاحة الوظائف على النطاق العالمي (Global Scope) لتتمكن عناصر HTML من مناداتها
-        window.toggleValueModal = function(show) { document.getElementById('valueModal').style.display = show ? 'flex' : 'none'; }
-        window.toggleSubGoalModal = function(show) { document.getElementById('subGoalModal').style.display = show ? 'flex' : 'none'; }
-        window.toggleNoteModal = function(show) { document.getElementById('noteModal').style.display = show ? 'flex' : 'none'; }
-        window.toggleStrategicGoalModal = function(show) { document.getElementById('strategicGoalModal').style.display = show ? 'flex' : 'none'; }
+      {/* تذييل الصفحة */}
+      <footer className="text-center py-8 text-sky-900/60 text-xs border-t border-sky-100/40 bg-sky-50">
+        <p className="mb-1">حقوق الملكية الفكرية محفوظة © 2026 لـ <strong>LeadMe</strong></p>
+        <p>مصمم بشغف ليرشدك نحو بناء عادات ممتازة وتحقيق أهدافك العظمى</p>
+      </footer>
 
-        window.selectValueIcon = function(iconName) {
-            window.appState.selectedIcon = iconName;
-            document.querySelectorAll('.value-icon-btn').forEach(btn => {
-                btn.classList.remove('border-sky-300', 'bg-sky-50');
-                btn.classList.add('border-slate-100');
-                if (btn.getAttribute('data-icon') === iconName) {
-                    btn.classList.add('border-sky-300', 'bg-sky-50');
-                    btn.classList.remove('border-slate-100');
-                }
-            });
-        }
-
-        window.saveValue = function() {
-            const title = document.getElementById('valueTitleInput').value.trim();
-            const desc = document.getElementById('valueDescInput').value.trim();
-            if (!title) return;
-
-            window.appState.values.push({
-                id: Date.now().toString(),
-                title: title,
-                desc: desc || "مبدأ يمثل سلوكي وسيري اليومي نحو تحقيق ذاتي.",
-                icon: window.appState.selectedIcon
-            });
-
-            document.getElementById('valueTitleInput').value = '';
-            document.getElementById('valueDescInput').value = '';
-            toggleValueModal(false);
-            syncStateToCloud();
-        }
-
-        window.deleteValue = function(id) {
-            window.appState.values = window.appState.values.filter(val => val.id !== id);
-            syncStateToCloud();
-        }
-
-        window.editStrategicGoal = function() {
-            document.getElementById('strategicGoalInput').value = window.appState.strategicGoal;
-            toggleStrategicGoalModal(true);
-        }
-
-        window.saveStrategicGoal = function() {
-            const text = document.getElementById('strategicGoalInput').value.trim();
-            if (text) {
-                window.appState.strategicGoal = text;
-                toggleStrategicGoalModal(false);
-                syncStateToCloud();
-            }
-        }
-
-        window.saveSubGoal = function() {
-            const title = document.getElementById('subGoalTitleInput').value.trim();
-            const targetVal = parseInt(document.getElementById('subGoalTargetInput').value) || 1;
-            if (!title) return;
-
-            window.appState.subGoals.push({
-                id: Date.now().toString(),
-                title: title,
-                target: targetVal,
-                current: 0
-            });
-
-            document.getElementById('subGoalTitleInput').value = '';
-            document.getElementById('subGoalTargetInput').value = '1';
-            toggleSubGoalModal(false);
-            syncStateToCloud();
-        }
-
-        window.updateSubGoalProgress = function(id, amount) {
-            window.appState.subGoals = window.appState.subGoals.map(goal => {
-                if (goal.id === id) {
-                    let newVal = goal.current + amount;
-                    if (newVal < 0) newVal = 0;
-                    if (newVal > goal.target) newVal = goal.target;
-                    return { ...goal, current: newVal };
-                }
-                return goal;
-            });
-            syncStateToCloud();
-        }
-
-        window.deleteSubGoal = function(id) {
-            window.appState.subGoals = window.appState.subGoals.filter(goal => goal.id !== id);
-            syncStateToCloud();
-        }
-
-        window.addTodoTask = function(event) {
-            event.preventDefault();
-            const text = document.getElementById('todoInput').value.trim();
-            if (!text) return;
-
-            window.appState.todos.push({
-                id: Date.now().toString(),
-                title: text,
-                completed: false
-            });
-
-            document.getElementById('todoInput').value = '';
-            syncStateToCloud();
-        }
-
-        window.toggleTodoState = function(id) {
-            window.appState.todos = window.appState.todos.map(todo => {
-                if (todo.id === id) {
-                    return { ...todo, completed: !todo.completed };
-                }
-                return todo;
-            });
-            syncStateToCloud();
-        }
-
-        window.deleteTodo = function(id) {
-            window.appState.todos = window.appState.todos.filter(todo => todo.id !== id);
-            syncStateToCloud();
-        }
-
-        window.clearCompletedHistory = function() {
-            window.appState.todos = window.appState.todos.filter(todo => !todo.completed);
-            syncStateToCloud();
-        }
-
-        window.saveNote = function() {
-            const title = document.getElementById('noteTitleInput').value.trim();
-            const content = document.getElementById('noteContentInput').value.trim();
-            if (!title || !content) return;
-
-            const currentDate = new Date();
-            const formattedDate = currentDate.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
-
-            window.appState.notes.unshift({
-                id: Date.now().toString(),
-                title: title,
-                content: content,
-                date: formattedDate
-            });
-
-            document.getElementById('noteTitleInput').value = '';
-            document.getElementById('noteContentInput').value = '';
-            toggleNoteModal(false);
-            syncStateToCloud();
-        }
-
-        window.deleteNote = function(id) {
-            window.appState.notes = window.appState.notes.filter(note => note.id !== id);
-            syncStateToCloud();
-        }
-    </script>
-</body>
-</html>
+    </div>
+  );
+}
 
 ```
